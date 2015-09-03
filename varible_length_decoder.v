@@ -21,8 +21,12 @@ module variable_length_decoder(clk, rst, push, full, size, pop, d, q);
             buffer_end <= 0;
         buffer <= next_buffer;
     end
+    reg [LOG2_WIDTH_OUT - 1:0] rst_pop;
     always @* begin
-        next_buffer = buffer >> pop;
+        rst_pop = pop;
+        if(rst)
+            rst_pop[LOG2_WIDTH_OUT - 1] = 1;
+        next_buffer = buffer >> rst_pop;
         next_buffer_end = buffer_end - pop;
         if(push) begin
             next_buffer = next_buffer | (d << next_buffer_end);
