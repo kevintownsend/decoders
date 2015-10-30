@@ -7,7 +7,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     input clk;
     input [63:0] op;
-    output busy;
+    output reg busy;
 
     output req_mem_ld;
     output [47:0] req_mem_addr;
@@ -35,10 +35,13 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     output [63:0] val;
     input stall_val;
 
+    parameter ID = 0;
     parameter REGISTERS_START = 2;
     parameter REGISTERS_END = 12;
     reg [47:0] registers[REGISTERS_START : REGISTERS_END - 1];
     reg [47:0] next_registers[REGISTERS_START : REGISTERS_END - 1];
+    `include "spmv_opcodes.vh"
+
     reg [2:0] state, next_state;
     localparam IDLE = 0;
     localparam LD_DELTA_CODES = 1;
@@ -52,6 +55,8 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire r3_eq_r7 = registers[3] == registers[7];
     wire r4_eq_r8 = registers[4] == registers[8];
     wire r5_eq_r9 = registers[5] == registers[9];
+
+    wire steady_state = (state == STEADY_1) || (state == STEADY_2) || (state == STEADY_3) || (state == STEADY_4);
 
     integer i;
     reg all_eq, rst, next_rst;
@@ -87,18 +92,18 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                     next_state = LD_PREFIX_CODES;
                 OP_LD_COMMON_CODES:
                     next_state = LD_COMMON_CODES;
-                OP_LD_STEADY:
+                OP_STEADY:
                     next_state = STEADY_1;
                 OP_LD:
                     for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
-                        if(i = op[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
-                            next_registers[i] = opcode[63:OPCODE_ARG_2];
+                        if(i == op[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
+                            next_registers[i] = op[63:OPCODE_ARG_2];
             endcase
         case(state)
             IDLE:
                 busy = 0;
             LD_DELTA_CODES: begin
-                if(!r2_eq_r6 && !mem_req_stall) begin
+                if(!r2_eq_r6 && !req_mem_stall) begin
                     next_registers[2] = r2_plus_8;
                     //TODO: requst memory
                 end
@@ -110,7 +115,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 end
             end
             LD_PREFIX_CODES: begin
-                if(!r2_eq_r6 && !mem_req_stall) begin
+                if(!r2_eq_r6 && !req_mem_stall) begin
                     next_registers[2] = r2_plus_8;
                     //TODO: request memory
                 end
@@ -123,7 +128,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 end
             end
             LD_COMMON_CODES: begin
-                if(!r2_eq_r6 && mem_req_stall) begin
+                if(!r2_eq_r6 && req_mem_stall) begin
                     next_registers[2] = r2_plus_8;
                     //TODO: request memory
                 end
@@ -136,7 +141,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 end
             end
             STEADY_1: begin //index code stream
-                if(!r2_eq_r6 && !mem_req_stall) begin
+                if(!r2_eq_r6 && !req_mem_stall) begin
                     next_registers[2] = r2_plus_8;
                     //TODO: request index stream
                 end
@@ -145,21 +150,21 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 //TODO: next_state logic
             end
             STEADY_2: begin //index stream arguments
-                if(!r3_eq_r7 && !mem_req_stall) begin
+                if(!r3_eq_r7 && !req_mem_stall) begin
                     //TODO: request data
                     next_registers[3] = r3_plus_8;
                 end
                 //TODO: next_state logic
             end
             STEADY_3: begin //floating point code stream
-                if(!r4_eq_r8 && !mem_req_stall) begin
+                if(!r4_eq_r8 && !req_mem_stall) begin
                     //TODO: request data
                     next_registers[4] = r4_plus_8;
                 end
                 //TODO: next_state logic
             end
             STEADY_4: begin //floating point argument stream
-                if(!r5_eq_r9 && !mem_req_stall) begin
+                if(!r5_eq_r9 && !req_mem_stall) begin
                     //TODO: request data
                     next_registers[5] = r5_plus_8;
                 end
@@ -170,6 +175,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
             //TODO: response logic
         end
     end
-    //TODO: steam decoders and luts
+    //TODO: linked list fifo
+    //TODO: stream decoders and luts
     //TODO: deltas to indices logic
 endmodule

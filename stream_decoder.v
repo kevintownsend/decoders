@@ -1,7 +1,7 @@
 module stream_decoder(clk, rst, push, d, q, full, half_full, ready, pop, table_push, table_addr, table_code_width, table_data);
-    parameter WIDTH_IN = 8;
+    parameter WIDTH_IN = 64;
     parameter WIDTH_OUT = 8;
-    parameter MAX_CODE_LENGTH = 8;
+    parameter MAX_CODE_LENGTH = 9;
     parameter INTERMEDIATE_WIDTH = 8;
     parameter LOG2_MAX_CODE_LENGTH = log2(MAX_CODE_LENGTH);
     parameter LOG2_WIDTH_OUT = log2(WIDTH_OUT);
