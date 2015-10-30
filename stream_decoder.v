@@ -1,33 +1,67 @@
-module stream_decoder(clk, rst, push_code, d, q, full, half_full, lut_counter, push_out, stall);
+module stream_decoder(clk, rst, push, d, q, full, half_full, ready, pop, table_push, table_addr, table_code_width, table_data);
     parameter WIDTH_IN = 8;
     parameter WIDTH_OUT = 8;
+    parameter MAX_CODE_LENGTH = 8;
+    parameter INTERMEDIATE_WIDTH = 8;
+    parameter LOG2_MAX_CODE_LENGTH = log2(MAX_CODE_LENGTH);
+    parameter LOG2_WIDTH_OUT = log2(WIDTH_OUT);
+    parameter RAM_DEPTH = 2**MAX_CODE_LENGTH;
 
     input clk, rst;
-    input [1:0] push_code;
+    input push;
     input [WIDTH_IN - 1:0] d;
-    output reg [WIDTH_OUT - 1:0] q;
+    output [WIDTH_OUT - 1:0] q;
     output full, half_full;
-    output reg [WIDTH_OUT - 1:0] lut_counter;
-    output push_out;
-    input stall;
-    argument_decoder ad();
-    localparam LOG2_WIDTH_OUT = log2(WIDTH_OUT);
-    reg [LOG2_WIDTH_OUT - 1:0] lut [0:2**WIDTH_OUT - 1];
-    reg [WIDTH_OUT - 1:0] lut_addr;
-    wire [LOG2_WIDTH_OUT - 1:0] lut_out = lut[lut_addr];
-    always @(posedge clk)
-        if(push_code == 3)
-            lut[lut_addr] <= d;
+    output ready;
+    input pop;
+    input table_push;
+    input [MAX_CODE_LENGTH - 1:0] table_addr;
+    input [LOG2_MAX_CODE_LENGTH - 1:0] table_code_width;
+    input [WIDTH_OUT - 1:0] table_data;
+
+    wire [MAX_CODE_LENGTH - 1:0] argument_decoder_q;
+    reg [LOG2_MAX_CODE_LENGTH - 1:0] argument_decoder_pop;
+    argument_decoder #(MAX_CODE_LENGTH, WIDTH_IN, INTERMEDIATE_WIDTH) ad(clk, rst, push, d, argument_decoder_q, full, half_full, ready, argument_decoder_pop);
+
+    reg [LOG2_MAX_CODE_LENGTH - 1:0] code_width_table [0:RAM_DEPTH - 1];
+    reg [WIDTH_OUT - 1:0] data_table [0:RAM_DEPTH - 1];
+    reg [MAX_CODE_LENGTH - 1:0] internal_table_addr;
+
+    reg table_push_stage_0;
+    reg [MAX_CODE_LENGTH - 1:0] table_addr_stage_0;
+    reg [LOG2_MAX_CODE_LENGTH - 1:0] table_code_width_stage_0;
+    reg [WIDTH_OUT - 1:0] table_data_stage_0;
 
     always @(posedge clk) begin
-        if(rst)
-            lut_counter <= 0;
-        else if(push_code == 3)
-            lut_counter <= lut_counter + 1;
+        table_push_stage_0 <= table_push;
+        table_addr_stage_0 <= table_addr;
+        table_code_width_stage_0 <= table_code_width;
+        table_data_stage_0 <= table_data;
     end
-    always @*
-        if(push_code == 3)
-            lut_addr = lut_counter;
-        else
-            lut_addr = q;
+
+    always @* if(table_push_stage_0)
+        internal_table_addr = table_addr_stage_0;
+    else
+        internal_table_addr = argument_decoder_q;
+
+    always @(posedge clk) begin
+        if(table_push_stage_0)
+            code_width_table[internal_table_addr] <= table_code_width_stage_0;
+    end
+    reg [LOG2_MAX_CODE_LENGTH - 1:0] code_width_table_q;
+    always @* code_width_table_q = code_width_table[internal_table_addr];
+    reg [WIDTH_OUT - 1:0] data_out;
+    always @(posedge clk) begin
+        if(table_push_stage_0)
+            data_table[internal_table_addr] <= table_data_stage_0;
+        data_out <= data_table[internal_table_addr];
+    end
+    assign q = data_out;
+
+    always @* if(pop)
+        argument_decoder_pop = code_width_table_q;
+    else
+        argument_decoder_pop = 0;
+
+    `include "common.vh"
 endmodule
