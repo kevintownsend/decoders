@@ -9,9 +9,9 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     input [63:0] op;
     output reg busy;
 
-    output req_mem_ld;
-    output [47:0] req_mem_addr;
-    output [1:0] req_mem_tag;
+    output reg req_mem_ld;
+    output reg [47:0] req_mem_addr;
+    output reg [1:0] req_mem_tag;
     input req_mem_stall;
     input rsp_mem_push;
     input [1:0] rsp_mem_tag;
@@ -65,6 +65,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         rst <= next_rst;
         for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
             registers[i] <= next_registers[i];
+        state <= next_state;
     end
 
     wire [47:0] r2_plus_8 = registers[2] + 8;
@@ -75,14 +76,19 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire opcode_active = op[OPCODE_ARG_1 - 1] || (op[OPCODE_ARG_1 - 2:OPCODE_ARG_PE] == ID);
 
     always @* begin
+        req_mem_ld = 0;
+        req_mem_addr = registers[2];
+        req_mem_tag = 0;
         busy = 1;
         next_rst = 0;
         next_state = state;
         for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
             next_registers[i] = registers[i];
-        if(opcode_active)
+        if(opcode_active) begin
+            $display("opcode active");
             case(op[OPCODE_ARG_PE - 1:0])
                 OP_RST: begin
+                    $display("reset");
                     next_rst = 1;
                     next_state = IDLE;
                 end
@@ -99,18 +105,18 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                         if(i == op[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
                             next_registers[i] = op[63:OPCODE_ARG_2];
             endcase
+        end
         case(state)
             IDLE:
                 busy = 0;
             LD_DELTA_CODES: begin
                 if(!r2_eq_r6 && !req_mem_stall) begin
                     next_registers[2] = r2_plus_8;
-                    //TODO: requst memory
+                    req_mem_ld = 1;
                 end
                 if(r3_eq_r7)
                     next_state = IDLE;
                 if(rsp_mem_push) begin
-                    //TODO store delta code
                     next_registers[3] = r3_plus_8;
                 end
             end
@@ -175,7 +181,41 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
             //TODO: response logic
         end
     end
+
+    reg spm_stream_decoder_push;
+    wire [63:0] linked_list_fifo_q;
+    wire [2 + 5 - 1:0] spm_stream_decoder_q;
+    wire spm_stream_decoder_full;
+    wire spm_stream_decoder_half_full;
+    wire spm_stream_decoder_ready;
+    reg spm_stream_decoder_pop;
+    reg spm_stream_decoder_table_push;
+    localparam SPM_TABLE_DEPTH = 2**7;
+    localparam LOG2_SPM_TABLE_DEPTH = 7;
+    reg [LOG2_SPM_TABLE_DEPTH - 1:0] spm_stream_decoder_table_addr;
+    localparam LOG2_LOG2_SPM_TABLE_DEPTH = 3;
+    reg [LOG2_LOG2_SPM_TABLE_DEPTH - 1:0] spm_stream_decoder_table_code_width;
+    reg [2 + 5 - 1:0] spm_stream_decoder_table_data;
+    stream_decoder #(64, 7, 7, 8) spm_stream_decoder(clk, rst, spm_stream_decoder_push, linked_list_fifo_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data);
+
+    always @* begin
+        spm_stream_decoder_table_push = 0;
+        spm_stream_decoder_table_addr = registers[3] / 8;
+        spm_stream_decoder_table_code_width = rsp_mem_q[2:0];
+        spm_stream_decoder_table_data = rsp_mem_q[9:3];
+        if(state == LD_DELTA_CODES && rsp_mem_push)
+            spm_stream_decoder_table_push = 1;
+    end
     //TODO: linked list fifo
     //TODO: stream decoders and luts
     //TODO: deltas to indices logic
+
+    //Debug
+    always @(posedge clk) begin
+        /*
+        if(spm_stream_decoder_table_push) begin
+            $display("woot at %d", $time);
+        end
+        */
+    end
 endmodule
