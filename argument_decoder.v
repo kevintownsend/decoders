@@ -17,8 +17,7 @@ module argument_decoder(clk, rst, push, d, q, full, half_full, ready, pop);
     wire [INTERMEDIATE_WIDTH - 1:0] fifo_q;
     wire fifo_empty, fifo_almost_empty, fifo_almost_full;
     localparam LOG2_FIFO_DEPTH = log2(32 - 1);
-    wire [LOG2_FIFO_DEPTH:0] fifo_size;
-    asymmetric_fifo #(.WIDTH_IN(WIDTH_IN), .WIDTH_OUT(INTERMEDIATE_WIDTH), .DEPTH_IN(32), .ALMOST_FULL_COUNT(16)) fifo(rst, clk, push, fifo_pop, d, fifo_q, full, fifo_empty, fifo_size, fifo_almost_empty, half_full);
+    asymmetric_fifo #(.WIDTH_IN(WIDTH_IN), .WIDTH_OUT(INTERMEDIATE_WIDTH), .DEPTH_IN(32), .ALMOST_FULL_COUNT(16)) fifo(rst, clk, push, fifo_pop, d, fifo_q, full, fifo_empty, , fifo_almost_empty, half_full);
     wire vld_full;
     wire [LOG2_BUFFER_WIDTH - 1:0] vld_size;
     always @*
