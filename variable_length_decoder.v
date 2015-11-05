@@ -12,7 +12,7 @@ module variable_length_decoder(clk, rst, push, full, size, pop, d, q);
     input [WIDTH_IN - 1:0] d;
     output [WIDTH_OUT - 1:0] q;
 
-    reg [BUFFER_WIDTH:0] buffer, next_buffer;
+    reg [BUFFER_WIDTH - 1:0] buffer, next_buffer;
     reg [LOG2_BUFFER_WIDTH - 1:0] buffer_end, next_buffer_end;
 
     always @(posedge clk) begin

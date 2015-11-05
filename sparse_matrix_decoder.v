@@ -25,7 +25,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     input req_scratch_stall;
     input rsp_scratch_push;
     input [63:0] rsp_scratch_q;
-    output reg rsp_scratch_stall;
+    output rsp_scratch_stall;
 
     output push_index;
     output [31:0] row;
@@ -51,10 +51,10 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     localparam STEADY_2 = 5;
     localparam STEADY_3 = 6;
     localparam STEADY_4 = 7;
-    wire r2_eq_r6 = registers[2] == registers[6];
-    wire r3_eq_r7 = registers[3] == registers[7];
-    wire r4_eq_r8 = registers[4] == registers[8];
-    wire r5_eq_r9 = registers[5] == registers[9];
+    wire r2_eq_r6 = registers[REGISTERS_START] == registers[REGISTERS_START + 4];
+    wire r3_eq_r7 = registers[REGISTERS_START + 1] == registers[REGISTERS_START + 5];
+    wire r4_eq_r8 = registers[REGISTERS_START + 2] == registers[REGISTERS_START + 6];
+    wire r5_eq_r9 = registers[REGISTERS_START + 3] == registers[REGISTERS_START + 7];
 
     wire steady_state = (state == STEADY_1) || (state == STEADY_2) || (state == STEADY_3) || (state == STEADY_4);
 
@@ -77,10 +77,10 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     end
     wire recurring_timer = counter[5];
 
-    wire [47:0] r2_plus_8 = registers[2] + 8;
-    wire [47:0] r3_plus_8 = registers[3] + 8;
-    wire [47:0] r4_plus_8 = registers[4] + 8;
-    wire [47:0] r5_plus_8 = registers[5] + 8;
+    wire [47:0] r2_plus_8 = registers[REGISTERS_START] + 8;
+    wire [47:0] r3_plus_8 = registers[REGISTERS_START + 1] + 8;
+    wire [47:0] r4_plus_8 = registers[REGISTERS_START + 2] + 8;
+    wire [47:0] r5_plus_8 = registers[REGISTERS_START + 3] + 8;
 
     wire opcode_active = op[OPCODE_ARG_1 - 1] || (op[OPCODE_ARG_1 - 2:OPCODE_ARG_PE] == ID);
 
@@ -90,9 +90,10 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire fzip_argument_decoder_half_full;
     reg spm_stage_4;
     reg spm_stage_5;
+    reg fzip_stage_6;
     always @* begin
         req_mem_ld = 0;
-        req_mem_addr = registers[2];
+        req_mem_addr = registers[REGISTERS_START];
         req_mem_tag = 0;
         busy = 1;
         next_rst = 0;
@@ -125,78 +126,81 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 busy = 0;
             LD_DELTA_CODES: begin
                 if(!r2_eq_r6 && !req_mem_stall) begin
-                    next_registers[2] = r2_plus_8;
+                    next_registers[REGISTERS_START] = r2_plus_8;
                     req_mem_ld = 1;
                 end
                 if(r3_eq_r7)
                     next_state = IDLE;
                 if(rsp_mem_push) begin
-                    next_registers[3] = r3_plus_8;
+                    next_registers[REGISTERS_START + 1] = r3_plus_8;
                 end
             end
             LD_PREFIX_CODES: begin
                 if(!r2_eq_r6 && !req_mem_stall) begin
-                    next_registers[2] = r2_plus_8;
+                    next_registers[REGISTERS_START] = r2_plus_8;
                     req_mem_ld = 1;
                 end
                 if(r3_eq_r7) begin
                     next_state = IDLE;
                 end
                 if(rsp_mem_push) begin
-                    next_registers[10] = rsp_mem_q[11:4];
-                    next_registers[3] = r3_plus_8;
+                    next_registers[REGISTERS_START + 8] = rsp_mem_q[11:0];
+                    next_registers[REGISTERS_START + 1] = r3_plus_8;
                 end
 
             end
             LD_COMMON_CODES: begin
                 if(!r2_eq_r6 && !req_mem_stall) begin
-                    next_registers[2] = r2_plus_8;
+                    next_registers[REGISTERS_START] = r2_plus_8;
                     req_mem_ld = 1;
                 end
                 if(r3_eq_r7) begin
                     next_state = IDLE;
                 end
                 if(rsp_mem_push) begin
-                    next_registers[3] = r3_plus_8;
+                    next_registers[REGISTERS_START + 1] = r3_plus_8;
                 end
             end
             STEADY_1: begin //index code stream
                 if(!r2_eq_r6 && !req_mem_stall) begin
-                    next_registers[2] = r2_plus_8;
+                    next_registers[REGISTERS_START] = r2_plus_8;
                     req_mem_ld = 1;
                     req_mem_tag = 0;
                 end
+                if(recurring_timer || spm_stream_decoder_half_full || r2_eq_r6)
+                    next_state = STEADY_2;
                 if(all_eq) begin
                     next_state = IDLE;
                 end
-                if(recurring_timer || spm_stream_decoder_half_full)
-                    next_state = STEADY_2;
             end
             STEADY_2: begin //index stream arguments
                 if(!r3_eq_r7 && !req_mem_stall) begin
-                    next_registers[3] = r3_plus_8;
+                    next_registers[REGISTERS_START + 1] = r3_plus_8;
                     req_mem_ld = 1;
                     req_mem_tag = 1;
+                    req_mem_addr = registers[REGISTERS_START + 1];
                 end
-                if(recurring_timer || spm_argument_decoder_half_full)
+                if(recurring_timer || spm_argument_decoder_half_full || r3_eq_r7)
                     next_state = STEADY_3;
             end
             STEADY_3: begin //floating point code stream
                 if(!r4_eq_r8 && !req_mem_stall) begin
-                    next_registers[4] = r4_plus_8;
+                    next_registers[REGISTERS_START + 2] = r4_plus_8;
                     req_mem_ld = 1;
                     req_mem_tag = 2;
+                    req_mem_addr = registers[REGISTERS_START + 2];
                 end
-                if(recurring_timer || fzip_stream_decoder_half_full)
+                if(recurring_timer || fzip_stream_decoder_half_full || r4_eq_r8)
                     next_state = STEADY_4;
             end
             STEADY_4: begin //floating point argument stream
                 if(!r5_eq_r9 && !req_mem_stall) begin
-                    next_registers[5] = r5_plus_8;
+                    next_registers[REGISTERS_START + 3] = r5_plus_8;
                     req_mem_ld = 1;
                     req_mem_tag = 3;
+                    req_mem_addr = registers[REGISTERS_START + 3];
                 end
-                if(recurring_timer || fzip_argument_decoder_half_full)
+                if(recurring_timer || fzip_argument_decoder_half_full || r5_eq_r9)
                     next_state = STEADY_1;
             end
         endcase
@@ -204,7 +208,9 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
             //TODO: response logic
         end
         if(spm_stage_4)
-            next_registers[10] = registers[10] - 1;
+            next_registers[REGISTERS_START + 8] = registers[REGISTERS_START + 8] - 1;
+        if(fzip_stage_6)
+            next_registers[REGISTERS_START + 9] = registers[REGISTERS_START + 9] - 1;
     end
 
     wire [63:0] linked_list_fifo_q;
@@ -214,7 +220,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire memory_response_fifo_empty;
     wire memory_response_fifo_full;
     wire memory_response_fifo_almost_full;
-    wire [8:0] memory_response_free_count;
+    wire [9:0] memory_response_free_count;
     linked_list_fifo #(64, 512, 4) memory_response_fifo(rst, clk, memory_response_fifo_push, rsp_mem_tag, memory_response_fifo_pop, memory_response_fifo_pop_tag, rsp_mem_q, linked_list_fifo_q, memory_response_fifo_empty, memory_response_fifo_full, , memory_response_fifo_almost_full, memory_response_free_count);
 
     always @* begin
@@ -240,7 +246,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     always @* begin
         spm_stream_decoder_table_push = 0;
-        spm_stream_decoder_table_addr = registers[3] / 8;
+        spm_stream_decoder_table_addr = registers[REGISTERS_START + 1] / 8;
         spm_stream_decoder_table_code_width = rsp_mem_q[2:0];
         spm_stream_decoder_table_data = rsp_mem_q[9:3];
         if(state == LD_DELTA_CODES && rsp_mem_push)
@@ -248,11 +254,11 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     end
 
     reg spm_argument_decoder_push;
-    wire [31:0] spm_argument_decoder_q;
+    wire [30:0] spm_argument_decoder_q;
     wire spm_argument_decoder_full;
     wire spm_argument_decoder_ready;
-    reg [5:0] spm_argument_decoder_pop;
-    argument_decoder #(32, 64) spm_argument_decoder(clk, rst, spm_argument_decoder_push, linked_list_fifo_q, spm_argument_decoder_q, spm_argument_decoder_full, spm_argument_decoder_half_full, spm_argument_decoder_ready, spm_argument_decoder_pop);
+    reg [4:0] spm_argument_decoder_pop;
+    argument_decoder #(31, 64) spm_argument_decoder(clk, rst, spm_argument_decoder_push, linked_list_fifo_q, spm_argument_decoder_q, spm_argument_decoder_full, spm_argument_decoder_half_full, spm_argument_decoder_ready, spm_argument_decoder_pop);
 
     wire spm_stage_0 = spm_stream_decoder_ready && spm_argument_decoder_ready && !stall_index; //TODO: fix with almost empty and counter
     reg spm_stage_1;
@@ -335,7 +341,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg [31:0] spm_col_stage_5;
     always @(posedge clk) begin
         spm_stage_5 <= spm_stage_4;
-        if(registers[10][47])
+        if(registers[REGISTERS_START + 8][47])
             spm_stage_5 <= 0;
         spm_row_stage_5 <= spm_row_stage_4;
         spm_col_stage_5 <= spm_col_stage_4;
@@ -361,38 +367,144 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     always @* begin
         fzip_stream_decoder_table_push = 0;
-        fzip_stream_decoder_table_addr = registers[3] / 16;
-        fzip_stream_decoder_table_code_width = rsp_mem_q[3:0];
-        fzip_stream_decoder_table_data = {rsp_mem_q[63:0], registers[10][7:0]};
-        if(state == LD_PREFIX_CODES && rsp_mem_push && registers[3][3])
+        fzip_stream_decoder_table_addr = registers[REGISTERS_START + 1] / 16;
+        fzip_stream_decoder_table_code_width = registers[REGISTERS_START + 8][3:0];
+        fzip_stream_decoder_table_data = {rsp_mem_q[63:0], registers[REGISTERS_START + 8][11:4]};
+        if(state == LD_PREFIX_CODES && rsp_mem_push && registers[REGISTERS_START + 1][3])
             fzip_stream_decoder_table_push = 1;
     end
 
     reg fzip_argument_decoder_push;
-    wire [63:0] fzip_argument_decoder_q;
+    wire [62:0] fzip_argument_decoder_q;
     wire fzip_argument_decoder_full;
     wire fzip_argument_decoder_ready;
-    reg [6:0] fzip_argument_decoder_pop;
-    argument_decoder #(64, 64) fzip_argument_decoder(clk, rst, fzip_argument_decoder_push, linked_list_fifo_q, fzip_argument_decoder_q, fzip_argument_decoder_full, fzip_argument_decoder_half_full, fzip_argument_decoder_ready, fzip_argument_decoder_pop);
+    reg [5:0] fzip_argument_decoder_pop;
+    argument_decoder #(63, 64) fzip_argument_decoder(clk, rst, fzip_argument_decoder_push, linked_list_fifo_q, fzip_argument_decoder_q, fzip_argument_decoder_full, fzip_argument_decoder_half_full, fzip_argument_decoder_ready, fzip_argument_decoder_pop);
 
 
     //common codes
 
+    reg [63:0] fzip_value_stage_3;
     always @* begin
         req_scratch_st = 0;
-        req_scratch_addr = registers[3] / 8;
+        req_scratch_addr = registers[REGISTERS_START + 1] / 8;
         req_scratch_d = rsp_mem_q;
         if(state == LD_COMMON_CODES && rsp_mem_push) begin
             req_scratch_st = 1;
         end
+        if(req_scratch_ld)
+            req_scratch_addr = fzip_value_stage_3[12:0];
     end
 
     always @* begin
-        rsp_mem_stall = 0;
+        rsp_mem_stall = memory_response_fifo_almost_full;
         if(state == LD_COMMON_CODES && rsp_scratch_stall)
             rsp_mem_stall = 1;
     end
-    //TODO: fzip argument decoder
+
+    wire fzip_stage_0 = fzip_stream_decoder_ready & fzip_argument_decoder_ready & !stall_val;
+    /*
+    always @(posedge clk) begin
+        $display("debug: ");
+        $display("%d %d %d", fzip_stream_decoder_ready, fzip_argument_decoder_ready, stall_val);
+        $display("%d", fzip_stream_decoder_pop);
+        $display("buffer_end: %d", fzip_argument_decoder.vld.buffer_end);
+        if(!rst && fzip_argument_decoder_ready !== 0 && fzip_argument_decoder_ready !== 1)
+            $finish;
+    end
+    */
+    always @* fzip_stream_decoder_pop = fzip_stage_0;
+    reg fzip_stage_1;
+    wire fzip_is_common_stage_1 = fzip_stream_decoder_q[0];
+    wire [6:0] fzip_prefix_length_stage_1 = fzip_stream_decoder_q[7:1];
+    wire [63:0] fzip_prefix_stage_1 = fzip_stream_decoder_q[71:8];
+    always @(posedge clk) begin
+        fzip_stage_1 <= fzip_stage_0;
+    end
+
+    reg fzip_stage_2;
+    reg [63:0] fzip_value_stage_2;
+    reg [5:0] fzip_argument_pop_stage_2;
+    reg [63:0] fzip_mask_stage_2;
+    reg fzip_is_common_stage_2;
+    always @(posedge clk) begin
+        fzip_stage_2 <= fzip_stage_1;
+        fzip_value_stage_2 <= fzip_prefix_stage_1;
+        fzip_argument_pop_stage_2 <= 0;
+        if(fzip_stage_1)
+            fzip_argument_pop_stage_2 <= 64 - fzip_prefix_length_stage_1;
+        fzip_mask_stage_2 <= 64'HFFFFFFFFFFFFFFFF >> fzip_prefix_length_stage_1;
+        fzip_is_common_stage_2 <= fzip_is_common_stage_1;
+    end
+    always @* fzip_argument_decoder_pop = fzip_argument_pop_stage_2;
+
+    reg fzip_stage_3;
+    reg fzip_is_common_stage_3;
+    always @(posedge clk) begin
+        fzip_stage_3 <= fzip_stage_2;
+        fzip_value_stage_3 <= fzip_value_stage_2 | (fzip_mask_stage_2 & fzip_argument_decoder_q);
+        fzip_is_common_stage_3 <= fzip_is_common_stage_2;
+    end
+
+    //TODO: bit fifo
+    reg fzip_is_common_fifo_pop;
+    wire fzip_is_common_fifo_q;
+    wire fzip_is_common_fifo_full;
+    wire fzip_is_common_fifo_empty;
+    std_fifo #(.WIDTH(1), .DEPTH(64), .LATENCY(0)) fzip_is_common_fifo(rst, clk, fzip_stage_3, fzip_is_common_fifo_pop, fzip_is_common_stage_3, fzip_is_common_fifo_q, fzip_is_common_fifo_full, fzip_is_common_fifo_empty, , , );
+
+    //TODO: value fifo
+    reg fzip_not_common_fifo_pop;
+    wire [63:0] fzip_not_common_fifo_q;
+    wire fzip_not_common_fifo_full;
+    wire fzip_not_common_fifo_empty;
+    std_fifo #(64, 32) fzip_not_common_fifo(rst, clk, fzip_stage_3 && !fzip_is_common_stage_3, fzip_not_common_fifo_pop, fzip_value_stage_3, fzip_not_common_fifo_q, fzip_not_common_fifo_full, fzip_not_common_fifo_empty, , , );
+
+    always @* begin
+        req_scratch_ld = fzip_stage_3 && fzip_is_common_stage_3;
+    end
+
+    reg fzip_common_fifo_pop;
+    wire [63:0] fzip_common_fifo_q;
+    wire fzip_common_fifo_full;
+    wire fzip_common_fifo_empty;
+    std_fifo #(64, 32) fzip_common_fifo(rst, clk, rsp_scratch_push, fzip_common_fifo_pop, rsp_scratch_q, fzip_common_fifo_q, fzip_common_fifo_full, fzip_common_fifo_empty, , , rsp_scratch_stall);
+
+    //stage_4
+    reg fzip_common_stage_4;
+    reg fzip_not_common_stage_4;
+    always @* begin
+        fzip_common_stage_4 = fzip_is_common_fifo_q && !fzip_common_fifo_empty;
+        fzip_not_common_stage_4 = !fzip_is_common_fifo_q && !fzip_is_common_fifo_empty;
+        fzip_is_common_fifo_pop = fzip_common_stage_4 || fzip_not_common_stage_4;
+        fzip_not_common_fifo_pop = fzip_not_common_stage_4;
+        fzip_common_fifo_pop = fzip_common_stage_4;
+    end
+
+    reg fzip_common_stage_5;
+    reg fzip_not_common_stage_5;
+    always @(posedge clk) begin
+        fzip_common_stage_5 <= fzip_common_stage_4;
+        fzip_not_common_stage_5 <= fzip_not_common_stage_4;
+    end
+
+    reg [63:0] fzip_value_stage_6;
+    always @(posedge clk) begin
+        fzip_stage_6 <= fzip_common_stage_5 || fzip_not_common_stage_5;
+        fzip_value_stage_6 <= fzip_common_fifo_q;
+        if(fzip_not_common_stage_5)
+            fzip_value_stage_6 <= fzip_not_common_fifo_q;
+    end
+
+    reg fzip_stage_7;
+    reg [63:0] fzip_value_stage_7;
+    always @(posedge clk) begin
+        fzip_stage_7 <= fzip_stage_6 && !registers[REGISTERS_START + 9][47];
+        fzip_value_stage_7 <= fzip_value_stage_6;
+    end
+    assign push_val = fzip_stage_7;
+    assign val = fzip_value_stage_7;
+
 
     //input arbitration
     reg [1:0] input_arbiter;
