@@ -1,4 +1,4 @@
-module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
+module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     req_mem_tag, req_mem_stall, rsp_mem_push, rsp_mem_tag, rsp_mem_q,
     rsp_mem_stall, req_scratch_ld, req_scratch_st, req_scratch_addr,
     req_scratch_d, req_scratch_stall, rsp_scratch_push, rsp_scratch_q,
@@ -37,7 +37,7 @@ module sprase_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     parameter ID = 0;
     parameter REGISTERS_START = 2;
-    parameter REGISTERS_END = 12;
+    parameter REGISTERS_END = REGISTERS_START + 10;
     reg [47:0] registers[REGISTERS_START : REGISTERS_END - 1];
     reg [47:0] next_registers[REGISTERS_START : REGISTERS_END - 1];
     `include "spmv_opcodes.vh"
