@@ -4,6 +4,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     req_scratch_d, req_scratch_stall, rsp_scratch_push, rsp_scratch_q,
     rsp_scratch_stall, push_index, row, col, stall_index, push_val, val,
     stall_val);
+    parameter ID = 0;
+    parameter REGISTERS_START = 2;
+    parameter REGISTERS_END = REGISTERS_START + 10;
 
     input clk;
     input [63:0] op;
@@ -35,9 +38,6 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     output [63:0] val;
     input stall_val;
 
-    parameter ID = 0;
-    parameter REGISTERS_START = 2;
-    parameter REGISTERS_END = REGISTERS_START + 10;
     reg [47:0] registers[REGISTERS_START : REGISTERS_END - 1];
     reg [47:0] next_registers[REGISTERS_START : REGISTERS_END - 1];
     `include "spmv_opcodes.vh"
@@ -61,11 +61,14 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     integer i;
     reg all_eq, rst, next_rst;
     always @(posedge clk) begin
-        all_eq <= r2_eq_r6 & r3_eq_r7 & r4_eq_r8 & r5_eq_r9;
+        all_eq <= r2_eq_r6 & r3_eq_r7 & r4_eq_r8 & r5_eq_r9 & registers[REGISTERS_START + 8][47] & registers[REGISTERS_START + 9][47];
         rst <= next_rst;
         for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
             registers[i] <= next_registers[i];
         state <= next_state;
+        if(rst) begin
+            $display("@verilog: sparse_matrix_decoder reset");
+        end
     end
 
     reg [5:0] counter;
@@ -91,19 +94,29 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg spm_stage_4;
     reg spm_stage_5;
     reg fzip_stage_6;
+    wire [47:0] register_4 = registers[4];
+    wire [47:0] register_5 = registers[5];
+    wire [47:0] register_6 = registers[6];
+    wire [47:0] register_7 = registers[7];
+    wire [47:0] register_8 = registers[8];
+    wire [47:0] register_9 = registers[9];
+    wire [47:0] register_10 = registers[10];
+    wire [47:0] register_11 = registers[11];
+    wire [47:0] register_12 = registers[12];
+    wire [47:0] register_13 = registers[13];
     always @* begin
         req_mem_ld = 0;
-        req_mem_addr = registers[REGISTERS_START];
+        req_mem_addr = register_4;
         req_mem_tag = 0;
         busy = 1;
         next_rst = 0;
         next_state = state;
-        for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
-            next_registers[i] = registers[i];
+        //for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
+        //    next_registers[i] = registers[i];
         if(opcode_active) begin
             case(op[OPCODE_ARG_PE - 1:0])
                 OP_RST: begin
-                    $display("reset");
+                    $display("@verilog: decoder reset");
                     next_rst = 1;
                     next_state = IDLE;
                 end
@@ -178,7 +191,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                     next_registers[REGISTERS_START + 1] = r3_plus_8;
                     req_mem_ld = 1;
                     req_mem_tag = 1;
-                    req_mem_addr = registers[REGISTERS_START + 1];
+                    req_mem_addr = register_5;
                 end
                 if(recurring_timer || spm_argument_decoder_half_full || r3_eq_r7)
                     next_state = STEADY_3;
@@ -188,17 +201,19 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                     next_registers[REGISTERS_START + 2] = r4_plus_8;
                     req_mem_ld = 1;
                     req_mem_tag = 2;
-                    req_mem_addr = registers[REGISTERS_START + 2];
+                    req_mem_addr = register_6;
                 end
                 if(recurring_timer || fzip_stream_decoder_half_full || r4_eq_r8)
                     next_state = STEADY_4;
             end
             STEADY_4: begin //floating point argument stream
                 if(!r5_eq_r9 && !req_mem_stall) begin
+                    //$display("here");
+                    //$finish;
                     next_registers[REGISTERS_START + 3] = r5_plus_8;
                     req_mem_ld = 1;
                     req_mem_tag = 3;
-                    req_mem_addr = registers[REGISTERS_START + 3];
+                    req_mem_addr = register_7;
                 end
                 if(recurring_timer || fzip_argument_decoder_half_full || r5_eq_r9)
                     next_state = STEADY_1;
@@ -208,9 +223,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
             //TODO: response logic
         end
         if(spm_stage_4)
-            next_registers[REGISTERS_START + 8] = registers[REGISTERS_START + 8] - 1;
+            next_registers[REGISTERS_START + 8] = register_12 - 1;
         if(fzip_stage_6)
-            next_registers[REGISTERS_START + 9] = registers[REGISTERS_START + 9] - 1;
+            next_registers[REGISTERS_START + 9] = register_13 - 1;
     end
 
     wire [63:0] linked_list_fifo_q;
@@ -223,6 +238,11 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire [9:0] memory_response_free_count;
     linked_list_fifo #(64, 512, 4) memory_response_fifo(rst, clk, memory_response_fifo_push, rsp_mem_tag, memory_response_fifo_pop, memory_response_fifo_pop_tag, rsp_mem_q, linked_list_fifo_q, memory_response_fifo_empty, memory_response_fifo_full, , memory_response_fifo_almost_full, memory_response_free_count);
 
+    always @(posedge clk) begin
+        if(memory_response_fifo_push) begin
+            $display("memory_response_fifo_push");
+        end
+    end
     always @* begin
         memory_response_fifo_push = 0;
         if(rsp_mem_push && steady_state)
@@ -246,7 +266,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     always @* begin
         spm_stream_decoder_table_push = 0;
-        spm_stream_decoder_table_addr = registers[REGISTERS_START + 1] / 8;
+        spm_stream_decoder_table_addr = register_5 / 8;
         spm_stream_decoder_table_code_width = rsp_mem_q[2:0];
         spm_stream_decoder_table_data = rsp_mem_q[9:3];
         if(state == LD_DELTA_CODES && rsp_mem_push)
@@ -365,12 +385,18 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg [64 + 8 - 1:0] fzip_stream_decoder_table_data;
     stream_decoder #(64, 64 + 8, 9, 16) fzip_stream_decoder(clk, rst, fzip_stream_decoder_push, linked_list_fifo_q, fzip_stream_decoder_q, fzip_stream_decoder_full, fzip_stream_decoder_half_full, fzip_stream_decoder_ready, fzip_stream_decoder_pop, fzip_stream_decoder_table_push, fzip_stream_decoder_table_addr, fzip_stream_decoder_table_code_width, fzip_stream_decoder_table_data);
 
+    always @(posedge clk) begin
+        if(spm_stream_decoder_push)
+            $display("stream decoder push");
+        if(fzip_stream_decoder_push)
+            $display("fzip decoder push");
+    end
     always @* begin
         fzip_stream_decoder_table_push = 0;
-        fzip_stream_decoder_table_addr = registers[REGISTERS_START + 1] / 16;
-        fzip_stream_decoder_table_code_width = registers[REGISTERS_START + 8][3:0];
-        fzip_stream_decoder_table_data = {rsp_mem_q[63:0], registers[REGISTERS_START + 8][11:4]};
-        if(state == LD_PREFIX_CODES && rsp_mem_push && registers[REGISTERS_START + 1][3])
+        fzip_stream_decoder_table_addr = register_5 / 16;
+        fzip_stream_decoder_table_code_width = register_12[3:0];
+        fzip_stream_decoder_table_data = {rsp_mem_q[63:0], register_12[11:4]};
+        if(state == LD_PREFIX_CODES && rsp_mem_push && register_5[3])
             fzip_stream_decoder_table_push = 1;
     end
 
@@ -387,7 +413,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg [63:0] fzip_value_stage_3;
     always @* begin
         req_scratch_st = 0;
-        req_scratch_addr = registers[REGISTERS_START + 1] / 8;
+        req_scratch_addr = register_5 / 8;
         req_scratch_d = rsp_mem_q;
         if(state == LD_COMMON_CODES && rsp_mem_push) begin
             req_scratch_st = 1;
@@ -403,8 +429,25 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     end
 
     wire fzip_stage_0 = fzip_stream_decoder_ready & fzip_argument_decoder_ready & !stall_val;
-    /*
+        /*
     always @(posedge clk) begin
+        if(fzip_stage_0) begin
+            $display("fzip_stage_0");
+        $display("debug: ");
+        $display("%d %d %d", fzip_stream_decoder_ready, fzip_argument_decoder_ready, stall_val);
+        $display("%d", fzip_stream_decoder_pop);
+        $display("buffer_end: %d", fzip_argument_decoder.vld.buffer_end);
+            $finish;
+        end
+        if(fzip_argument_decoder_push) begin
+            $display("fzip_argument_decoder_push");
+        $display("debug: ");
+        $display("%d %d %d", fzip_stream_decoder_ready, fzip_argument_decoder_ready, stall_val);
+        $display("%d", fzip_stream_decoder_pop);
+        $display("buffer_end: %d", fzip_argument_decoder.vld.buffer_end);
+        $finish;
+        end
+
         $display("debug: ");
         $display("%d %d %d", fzip_stream_decoder_ready, fzip_argument_decoder_ready, stall_val);
         $display("%d", fzip_stream_decoder_pop);
@@ -412,7 +455,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         if(!rst && fzip_argument_decoder_ready !== 0 && fzip_argument_decoder_ready !== 1)
             $finish;
     end
-    */
+        */
     always @* fzip_stream_decoder_pop = fzip_stage_0;
     reg fzip_stage_1;
     wire fzip_is_common_stage_1 = fzip_stream_decoder_q[0];
@@ -532,18 +575,27 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         next_fzip_stream_decoder_push = 0;
         next_fzip_argument_decoder_push = 0;
         if(input_arbiter == 0 && !spm_stream_decoder_full && !memory_response_fifo_empty) begin
+            $display("here0");
             next_spm_stream_decoder_push = 1;
             memory_response_fifo_pop = 1;
         end
         if(input_arbiter == 1 && !spm_argument_decoder_full && !memory_response_fifo_empty) begin
+            $display("here1");
             next_spm_argument_decoder_push = 1;
             memory_response_fifo_pop = 1;
         end
         if(input_arbiter == 2 && !fzip_stream_decoder_full && !memory_response_fifo_empty) begin
+            $display("here2");
             next_fzip_stream_decoder_push = 1;
             memory_response_fifo_pop = 1;
         end
+        /*
+        if(input_arbiter == 3) begin
+            $display("input_arbiter=3 %d %d", fzip_argument_decoder_full, memory_response_fifo_empty);
+        end
+        */
         if(input_arbiter == 3 && !fzip_argument_decoder_full && !memory_response_fifo_empty) begin
+            $display("here3");
             next_fzip_argument_decoder_push = 1;
             memory_response_fifo_pop = 1;
         end
@@ -552,7 +604,11 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     //TODO: deltas to indices logic
 
     //Debug
+    // synthesis translate_off
     always @(posedge clk) begin
+        $display("@verilog decoder debug: %d", $time);
+        $display("@verilog: state: %d", state);
+        $display("@verilog: rst: %d", rst);
         /*
         if(spm_stream_decoder_push)
             $display("spm_stream_decoder_push");
@@ -566,5 +622,6 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         end
         */
     end
+    // synthesis translate_on
     `include "common.vh"
 endmodule

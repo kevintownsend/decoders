@@ -48,8 +48,7 @@ module stream_decoder(clk, rst, push, d, q, full, half_full, ready, pop, table_p
         if(table_push_stage_0)
             code_width_table[internal_table_addr] <= table_code_width_stage_0;
     end
-    reg [LOG2_MAX_CODE_LENGTH - 1:0] code_width_table_q;
-    always @* code_width_table_q = code_width_table[internal_table_addr];
+    wire [LOG2_MAX_CODE_LENGTH - 1:0] code_width_table_q = code_width_table[internal_table_addr];
     reg [WIDTH_OUT - 1:0] data_out;
     always @(posedge clk) begin
         if(table_push_stage_0)

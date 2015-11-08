@@ -30,7 +30,7 @@ module sparse_matrix_decoder_tb;
     wire [63:0] val;
     reg stall_val;
 
-    sparse_matrix_decoder dut(clk, op, busy, req_mem_ld, req_mem_addr,
+    sparse_matrix_decoder #(0, 2) dut(clk, op, busy, req_mem_ld, req_mem_addr,
     req_mem_tag, req_mem_stall, rsp_mem_push, rsp_mem_tag, rsp_mem_q,
     rsp_mem_stall, req_scratch_ld, req_scratch_st, req_scratch_addr,
     req_scratch_d, req_scratch_stall, rsp_scratch_push, rsp_scratch_q,
