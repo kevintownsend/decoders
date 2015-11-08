@@ -113,6 +113,16 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         next_state = state;
         //for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
         //    next_registers[i] = registers[i];
+        next_registers[REGISTERS_START] = register_4;
+        next_registers[REGISTERS_START + 1] = register_5;
+        next_registers[REGISTERS_START + 2] = register_6;
+        next_registers[REGISTERS_START + 3] = register_7;
+        next_registers[REGISTERS_START + 4] = register_8;
+        next_registers[REGISTERS_START + 5] = register_9;
+        next_registers[REGISTERS_START + 6] = register_10;
+        next_registers[REGISTERS_START + 7] = register_11;
+        next_registers[REGISTERS_START + 8] = register_12;
+        next_registers[REGISTERS_START + 9] = register_13;
         if(opcode_active) begin
             case(op[OPCODE_ARG_PE - 1:0])
                 OP_RST: begin
@@ -550,9 +560,11 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
 
     //input arbitration
-    reg [1:0] input_arbiter;
+    reg [2:0] input_arbiter;
     initial input_arbiter = 0;
     wire [0:3] input_fifos_full = {spm_stream_decoder_full, spm_argument_decoder_full, fzip_stream_decoder_full, fzip_argument_decoder_full};
+    reg [0:3] input_fifos_almost_full;
+    always @(posedge clk) input_fifos_almost_full <= {spm_stream_decoder_half_full, spm_argument_decoder_half_full, fzip_stream_decoder_half_full, fzip_argument_decoder_half_full};
 //TODO: almost full
     reg next_spm_stream_decoder_push;
     reg next_spm_argument_decoder_push;
@@ -562,40 +574,44 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         if(input_fifos_full[input_arbiter] || memory_response_fifo_empty) begin
             input_arbiter <= input_arbiter + 1;
         end
+        if(input_fifos_almost_full[0])
+            input_arbiter <= 0;
+        else if(input_fifos_almost_full[1])
+            input_arbiter <= 1;
+        else if(input_fifos_almost_full[2])
+            input_arbiter <= 2;
+        else if(input_fifos_almost_full[3])
+            input_arbiter <= 3;
+        else
+            input_arbiter <= 4;
         spm_stream_decoder_push <= next_spm_stream_decoder_push;
         spm_argument_decoder_push <= next_spm_argument_decoder_push;
         fzip_stream_decoder_push <= next_fzip_stream_decoder_push;
         fzip_argument_decoder_push <= next_fzip_argument_decoder_push;
     end
     always @* begin
-        memory_response_fifo_pop_tag = input_arbiter;
+        memory_response_fifo_pop_tag = input_arbiter[1:0];
         memory_response_fifo_pop = 0;
         next_spm_stream_decoder_push = 0;
         next_spm_argument_decoder_push = 0;
         next_fzip_stream_decoder_push = 0;
         next_fzip_argument_decoder_push = 0;
-        if(input_arbiter == 0 && !spm_stream_decoder_full && !memory_response_fifo_empty) begin
+        if(input_arbiter == 0 && !memory_response_fifo_empty) begin
             $display("here0");
             next_spm_stream_decoder_push = 1;
             memory_response_fifo_pop = 1;
         end
-        if(input_arbiter == 1 && !spm_argument_decoder_full && !memory_response_fifo_empty) begin
+        if(input_arbiter == 1 && !memory_response_fifo_empty) begin
             $display("here1");
             next_spm_argument_decoder_push = 1;
             memory_response_fifo_pop = 1;
         end
-        if(input_arbiter == 2 && !fzip_stream_decoder_full && !memory_response_fifo_empty) begin
+        if(input_arbiter == 2 && !memory_response_fifo_empty) begin
             $display("here2");
             next_fzip_stream_decoder_push = 1;
             memory_response_fifo_pop = 1;
         end
-        /*
-        if(input_arbiter == 3) begin
-            $display("input_arbiter=3 %d %d", fzip_argument_decoder_full, memory_response_fifo_empty);
-        end
-        */
-        if(input_arbiter == 3 && !fzip_argument_decoder_full && !memory_response_fifo_empty) begin
-            $display("here3");
+        if(input_arbiter == 3 && !memory_response_fifo_empty) begin
             next_fzip_argument_decoder_push = 1;
             memory_response_fifo_pop = 1;
         end
