@@ -21,7 +21,7 @@ module stream_decoder(clk, rst, push, d, q, full, half_full, ready, pop, table_p
 
     wire [MAX_CODE_LENGTH - 1:0] argument_decoder_q;
     reg [LOG2_MAX_CODE_LENGTH - 1:0] argument_decoder_pop;
-    argument_decoder #(MAX_CODE_LENGTH, WIDTH_IN, INTERMEDIATE_WIDTH) ad(clk, rst, push, d, argument_decoder_q, full, half_full, ready, argument_decoder_pop);
+    argument_decoder #(MAX_CODE_LENGTH, WIDTH_IN, INTERMEDIATE_WIDTH) ad(clk, rst, push, d, argument_decoder_q, full, half_full, ready, argument_decoder_pop, );
 
     reg [LOG2_MAX_CODE_LENGTH - 1:0] code_width_table [0:RAM_DEPTH - 1];
     reg [WIDTH_OUT - 1:0] data_table [0:RAM_DEPTH - 1];

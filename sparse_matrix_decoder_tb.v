@@ -275,15 +275,20 @@ struct SmacHeader{
     //TODO: check output
     integer push_index_count;
     initial push_index_count = 0;
+    integer push_val_count;
+    initial push_val_count = 0;
     always @(posedge clk) begin
         if(push_index) begin
-            if(push_index_count >= 60)
-                $finish;
             $display("push_index: row: %d col: %d", row, col);
             push_index_count = push_index_count + 1;
         end
         if(push_val) begin
+            /*
+            if(push_val_count >= 4)
+                $finish;
+            */
             $display("push_val: %f", $bitstoreal(val));
+            push_val_count = push_val_count + 1;
         end
     end
 
