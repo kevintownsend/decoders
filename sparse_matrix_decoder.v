@@ -108,6 +108,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire [47:0] register_11 = registers[11];
     wire [47:0] register_12 = registers[12];
     wire [47:0] register_13 = registers[13];
+    reg [0:3] memory_response_not_starving;
     always @* begin
         req_mem_ld = 0;
         req_mem_addr = register_4;
@@ -189,39 +190,39 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 end
             end
             STEADY_1: begin //index code stream
-                if(!r2_eq_r6 && !req_mem_stall) begin
+                if(!r2_eq_r6 && !req_mem_stall && !memory_response_not_starving[0]) begin
                     next_registers[REGISTERS_START] = r2_plus_8;
                     req_mem_ld = 1;
                     req_mem_tag = 0;
                 end
-                if(recurring_timer || spm_stream_decoder_half_full || r2_eq_r6)
+                if(recurring_timer || memory_response_not_starving[0] || r2_eq_r6)
                     next_state = STEADY_2;
                 if(all_eq) begin
                     next_state = IDLE;
                 end
             end
             STEADY_2: begin //index stream arguments
-                if(!r3_eq_r7 && !req_mem_stall) begin
+                if(!r3_eq_r7 && !req_mem_stall && !memory_response_not_starving[1]) begin
                     next_registers[REGISTERS_START + 1] = r3_plus_8;
                     req_mem_ld = 1;
                     req_mem_tag = 1;
                     req_mem_addr = register_5;
                 end
-                if(recurring_timer || spm_argument_decoder_half_full || r3_eq_r7)
+                if(recurring_timer ||  memory_response_not_starving[1] || r3_eq_r7)
                     next_state = STEADY_3;
             end
             STEADY_3: begin //floating point code stream
-                if(!r4_eq_r8 && !req_mem_stall) begin
+                if(!r4_eq_r8 && !req_mem_stall && !memory_response_not_starving[2]) begin
                     next_registers[REGISTERS_START + 2] = r4_plus_8;
                     req_mem_ld = 1;
                     req_mem_tag = 2;
                     req_mem_addr = register_6;
                 end
-                if(recurring_timer || fzip_stream_decoder_half_full || r4_eq_r8)
+                if(recurring_timer ||  memory_response_not_starving[2] || r4_eq_r8)
                     next_state = STEADY_4;
             end
             STEADY_4: begin //floating point argument stream
-                if(!r5_eq_r9 && !req_mem_stall) begin
+                if(!r5_eq_r9 && !req_mem_stall && !memory_response_not_starving[3]) begin
                     //$display("here");
                     //$finish;
                     next_registers[REGISTERS_START + 3] = r5_plus_8;
@@ -229,7 +230,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                     req_mem_tag = 3;
                     req_mem_addr = register_7;
                 end
-                if(recurring_timer || fzip_argument_decoder_half_full || r5_eq_r9)
+                if(recurring_timer ||  memory_response_not_starving[3] || r5_eq_r9)
                     next_state = STEADY_1;
             end
         endcase
@@ -250,9 +251,21 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire memory_response_fifo_full;
     wire memory_response_fifo_almost_full;
     wire [9:0] memory_response_free_count;
-    linked_list_fifo #(64, 512, 4) memory_response_fifo(rst, clk, memory_response_fifo_push, rsp_mem_tag, memory_response_fifo_pop, memory_response_fifo_pop_tag, rsp_mem_q, linked_list_fifo_q, memory_response_fifo_empty, memory_response_fifo_full, , memory_response_fifo_almost_full, memory_response_free_count);
+    localparam RESPONSE_FIFO_DEPTH = 1024;
+    localparam LOG2_RESPONSE_FIFO_DEPTH = log2(RESPONSE_FIFO_DEPTH - 1);
+    wire [4 * LOG2_RESPONSE_FIFO_DEPTH - 1:0] memory_response_count_unrolled;
+    linked_list_fifo #(64, RESPONSE_FIFO_DEPTH, 4) memory_response_fifo(rst, clk, memory_response_fifo_push, rsp_mem_tag, memory_response_fifo_pop, memory_response_fifo_pop_tag, rsp_mem_q, linked_list_fifo_q, memory_response_fifo_empty, memory_response_fifo_full, memory_response_count_unrolled, memory_response_fifo_almost_full, memory_response_free_count);
+    reg [LOG2_RESPONSE_FIFO_DEPTH - 1:0] memory_response_count [0:3];
+    always @* begin
+        for(i = 0; i < 4; i = i + 1) begin
+            memory_response_count[i] = memory_response_count_unrolled[(i+1)*LOG2_RESPONSE_FIFO_DEPTH - 1 -:LOG2_RESPONSE_FIFO_DEPTH];
+        end
+    end
+    always @(posedge clk) begin
+        for(i = 0; i < 4; i = i + 1)
+            memory_response_not_starving[i] <= memory_response_count[i] > 63;
+    end
 
-    
     always @(posedge clk) begin
         if(memory_response_fifo_push) begin
             $display("memory_response_fifo_push");
@@ -631,9 +644,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     //Debug
     // synthesis translate_off
     always @(posedge clk) begin
-        $display("@verilog decoder debug: %d", $time);
-        $display("@verilog: state: %d", state);
-        $display("@verilog: rst: %d", rst);
+        //$display("@verilog decoder debug: %d", $time);
+        //$display("@verilog: state: %d", state);
+        //$display("@verilog: rst: %d", rst);
         /*
         if(spm_stream_decoder_push)
             $display("spm_stream_decoder_push");

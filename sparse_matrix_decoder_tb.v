@@ -30,7 +30,7 @@ module sparse_matrix_decoder_tb;
     wire [63:0] val;
     reg stall_val;
 
-    sparse_matrix_decoder #(0, 2) dut(clk, op, busy, req_mem_ld, req_mem_addr,
+    sparse_matrix_decoder #(0, 4, 8, 512) dut(clk, op, busy, req_mem_ld, req_mem_addr,
     req_mem_tag, req_mem_stall, rsp_mem_push, rsp_mem_tag, rsp_mem_q,
     rsp_mem_stall, req_scratch_ld, req_scratch_st, req_scratch_addr,
     req_scratch_d, req_scratch_stall, rsp_scratch_push, rsp_scratch_q,
@@ -43,11 +43,12 @@ module sparse_matrix_decoder_tb;
     end
 
     initial begin
-        #100000 $display("watchdog timer reached");
+        #1000000 $display("watchdog timer reached");
         $finish;
     end
     reg [63:0] mock_main_memory [0:100000 - 1];
-    initial $readmemh("example.hex", mock_main_memory);
+    //initial $readmemh("example.hex", mock_main_memory);
+    initial $readmemh("cant0.hex", mock_main_memory);
     /*
 struct SmacHeader{
     ull r0;
@@ -96,22 +97,22 @@ struct SmacHeader{
         $display("starting to load delta codes");
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+2;
         op[63:OPCODE_ARG_2] = spmCodesPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 6;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+6;
         op[63:OPCODE_ARG_2] = fzipCodesPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 3;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+3;
         op[63:OPCODE_ARG_2] = 0;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 7;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+7;
         op[63:OPCODE_ARG_2] = 2**7*8;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD_DELTA_CODES;
@@ -125,22 +126,22 @@ struct SmacHeader{
         $display("starting to load prefix codes");
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+2;
         op[63:OPCODE_ARG_2] = fzipCodesPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 6;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+6;
         op[63:OPCODE_ARG_2] = commonDoublesPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 3;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+3;
         op[63:OPCODE_ARG_2] = 0;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 7;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+7;
         op[63:OPCODE_ARG_2] = 2**9*8*2;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD_PREFIX_CODES;
@@ -156,22 +157,22 @@ struct SmacHeader{
         $display("starting to load common codes");
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+2;
         op[63:OPCODE_ARG_2] = commonDoublesPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 6;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+6;
         op[63:OPCODE_ARG_2] = spmCodeStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 3;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+3;
         op[63:OPCODE_ARG_2] = 0;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 7;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+7;
         op[63:OPCODE_ARG_2] = 2**9*16;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD_COMMON_CODES;
@@ -186,52 +187,52 @@ struct SmacHeader{
         $display("starting steady state");
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+2;
         op[63:OPCODE_ARG_2] = spmCodeStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 3;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+3;
         op[63:OPCODE_ARG_2] = spmArgumentStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 4;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+4;
         op[63:OPCODE_ARG_2] = fzipCodeStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 5;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+5;
         op[63:OPCODE_ARG_2] = fzipArgumentStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 6;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+6;
         op[63:OPCODE_ARG_2] = spmArgumentStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 7;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+7;
         op[63:OPCODE_ARG_2] = fzipCodeStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 8;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+8;
         op[63:OPCODE_ARG_2] = fzipArgumentStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 9;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+9;
         op[63:OPCODE_ARG_2] = size;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 10;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+10;
         op[63:OPCODE_ARG_2] = nnz - 1;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 11;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+11;
         op[63:OPCODE_ARG_2] = nnz - 1;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_STEADY;
@@ -272,9 +273,14 @@ struct SmacHeader{
     end
 
     //TODO: check output
+    integer push_index_count;
+    initial push_index_count = 0;
     always @(posedge clk) begin
         if(push_index) begin
+            if(push_index_count >= 60)
+                $finish;
             $display("push_index: row: %d col: %d", row, col);
+            push_index_count = push_index_count + 1;
         end
         if(push_val) begin
             $display("push_val: %f", $bitstoreal(val));
