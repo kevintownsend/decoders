@@ -505,14 +505,16 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire fzip_is_common_fifo_q;
     wire fzip_is_common_fifo_full;
     wire fzip_is_common_fifo_empty;
-    std_fifo #(.WIDTH(1), .DEPTH(64), .LATENCY(0)) fzip_is_common_fifo(rst, clk, fzip_stage_3, fzip_is_common_fifo_pop, fzip_is_common_stage_3, fzip_is_common_fifo_q, fzip_is_common_fifo_full, fzip_is_common_fifo_empty, , , );
+    wire fzip_is_common_fifo_almost_full;
+    std_fifo #(.WIDTH(1), .DEPTH(64), .LATENCY(0)) fzip_is_common_fifo(rst, clk, fzip_stage_3, fzip_is_common_fifo_pop, fzip_is_common_stage_3, fzip_is_common_fifo_q, fzip_is_common_fifo_full, fzip_is_common_fifo_empty, , , fzip_is_common_fifo_almost_full);
 
     //TODO: value fifo
     reg fzip_not_common_fifo_pop;
     wire [63:0] fzip_not_common_fifo_q;
     wire fzip_not_common_fifo_full;
     wire fzip_not_common_fifo_empty;
-    std_fifo #(64, 32) fzip_not_common_fifo(rst, clk, fzip_stage_3 && !fzip_is_common_stage_3, fzip_not_common_fifo_pop, fzip_value_stage_3, fzip_not_common_fifo_q, fzip_not_common_fifo_full, fzip_not_common_fifo_empty, , , );
+    wire fzip_not_common_fifo_almost_full;
+    std_fifo #(64, 32) fzip_not_common_fifo(rst, clk, fzip_stage_3 && !fzip_is_common_stage_3, fzip_not_common_fifo_pop, fzip_value_stage_3, fzip_not_common_fifo_q, fzip_not_common_fifo_full, fzip_not_common_fifo_empty, , , fzip_not_common_fifo_almost_full);
 
     always @* begin
         req_scratch_ld = fzip_stage_3 && fzip_is_common_stage_3;
@@ -522,14 +524,14 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire [63:0] fzip_common_fifo_q;
     wire fzip_common_fifo_full;
     wire fzip_common_fifo_empty;
-    std_fifo #(64, 32) fzip_common_fifo(rst, clk, rsp_scratch_push, fzip_common_fifo_pop, rsp_scratch_q, fzip_common_fifo_q, fzip_common_fifo_full, fzip_common_fifo_empty, , , rsp_scratch_stall);
+    std_fifo #(64, 64) fzip_common_fifo(rst, clk, rsp_scratch_push, fzip_common_fifo_pop, rsp_scratch_q, fzip_common_fifo_q, fzip_common_fifo_full, fzip_common_fifo_empty, , , rsp_scratch_stall);
 
     //stage_4
     reg fzip_common_stage_4;
     reg fzip_not_common_stage_4;
     always @* begin
-        fzip_common_stage_4 = fzip_is_common_fifo_q && !fzip_common_fifo_empty;
-        fzip_not_common_stage_4 = !fzip_is_common_fifo_q && !fzip_is_common_fifo_empty;
+        fzip_common_stage_4 = fzip_is_common_fifo_q && !fzip_common_fifo_empty && !stall_val;
+        fzip_not_common_stage_4 = !fzip_is_common_fifo_q && !fzip_is_common_fifo_empty && !stall_val;
         fzip_is_common_fifo_pop = fzip_common_stage_4 || fzip_not_common_stage_4;
         fzip_not_common_fifo_pop = fzip_not_common_stage_4;
         fzip_common_fifo_pop = fzip_common_stage_4;
