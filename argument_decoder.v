@@ -33,7 +33,7 @@ module argument_decoder(clk, rst, push, d, q, full, half_full, ready, pop, almos
     always @(posedge clk) begin
         if(pop && !ready) begin
             $display("ERROR: underflow at %m");
-            $finish;
+            //$finish;
         end
     end
     `include "common.vh"

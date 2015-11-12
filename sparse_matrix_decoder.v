@@ -251,7 +251,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire memory_response_fifo_full;
     wire memory_response_fifo_almost_full;
     wire [9:0] memory_response_free_count;
-    localparam RESPONSE_FIFO_DEPTH = 1024;
+    localparam RESPONSE_FIFO_DEPTH = 512;
     localparam LOG2_RESPONSE_FIFO_DEPTH = log2(RESPONSE_FIFO_DEPTH - 1);
     wire [4 * LOG2_RESPONSE_FIFO_DEPTH - 1:0] memory_response_count_unrolled;
     linked_list_fifo #(64, RESPONSE_FIFO_DEPTH, 4) memory_response_fifo(rst, clk, memory_response_fifo_push, rsp_mem_tag, memory_response_fifo_pop, memory_response_fifo_pop_tag, rsp_mem_q, linked_list_fifo_q, memory_response_fifo_empty, memory_response_fifo_full, memory_response_count_unrolled, memory_response_fifo_almost_full, memory_response_free_count);
@@ -315,35 +315,13 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         strain_counter <= strain_counter + 1;
         if(strain_counter[2])
             strain_counter[2] <= 0;
-        spm_argument_decoder_go_ahead <= spm_argument_decoder_almost_empty || (strain_counter[2] && spm_argument_decoder_ready);
+        spm_argument_decoder_go_ahead <= !spm_argument_decoder_almost_empty || (strain_counter[2] && spm_argument_decoder_ready);
     end
 
     wire spm_stage_0 = spm_stream_decoder_ready && spm_argument_decoder_go_ahead && !stall_index; //TODO: fix with almost empty and counter
 
-    integer stage_1_count, stage_0_count;
-    initial begin
-        stage_0_count = 0;
-        stage_1_count = 0;
-    end
     reg spm_stage_1;
-    /*
-    always @(posedge clk) begin
-        if(spm_stage_0) begin
-            $display("spm_stage_0: %d", stage_0_count);
-            $display("buffer: %B", spm_stream_decoder.ad.vld.buffer);
-            $display("buffer_end: %d", spm_stream_decoder.ad.vld.buffer_end);
-            stage_0_count = stage_0_count + 1;
-        end
-        if(spm_stage_1) begin
-            $display("spm_stage_1: %d", stage_1_count);
-            $display("spm_stream_decoder_q: %B %d", spm_stream_decoder_q[1:0], spm_stream_decoder_q[6:2]);
-            //$display("buffer_end: %d", spm_stream_decoder.ad.vld.buffer_end);
-            stage_1_count = stage_1_count + 1;
-        end
-    end
-    */
     always @* begin
-        spm_argument_decoder_pop = 0;
         spm_stream_decoder_pop = spm_stage_0;
     end
     always @(posedge clk) begin
@@ -370,7 +348,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         spm_mask_stage_2 <= 32'HFFFFFFFF >> (32 - spm_stream_decoder_delta_stage_1);
         spm_first_bit_stage_2 <= 32'H1 << spm_stream_decoder_delta_stage_1;
     end
-    assign argument_decoder_pop = spm_argument_pop_stage_2;
+    always @*
+        spm_argument_decoder_pop = spm_argument_pop_stage_2;
 
     reg spm_stage_3;
     reg [31:0] spm_delta_stage_3;
@@ -426,6 +405,32 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     assign push_index = spm_stage_5;
     assign row = spm_row_stage_5;
     assign col = spm_col_stage_5;
+
+    integer stage_1_count, stage_0_count, stage_2_count;
+    initial begin
+        stage_0_count = 0;
+        stage_1_count = 0;
+        stage_2_count = 0;
+    end
+    always @(posedge clk) begin
+        if(spm_stage_0) begin
+            $display("spm_stage_0: %d", stage_0_count);
+            $display("buffer: %B", spm_stream_decoder.ad.vld.buffer);
+            $display("buffer_end: %d", spm_stream_decoder.ad.vld.buffer_end);
+            stage_0_count = stage_0_count + 1;
+        end
+        if(spm_stage_1) begin
+            $display("spm_stage_1: %d", stage_1_count);
+            $display("spm_stream_decoder_q: %B %d", spm_stream_decoder_q[1:0], spm_stream_decoder_q[6:2]);
+            //$display("buffer_end: %d", spm_stream_decoder.ad.vld.buffer_end);
+            stage_1_count = stage_1_count + 1;
+        end
+        if(spm_stage_2) begin
+            $display("spm_stage_2: %d", stage_2_count);
+            $display("buffer_end: %d", spm_argument_decoder.vld.buffer_end);
+            stage_2_count = stage_2_count + 1;
+        end
+    end
 
     //fzip decoders
     reg fzip_stream_decoder_push;
@@ -485,8 +490,13 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         if(state == LD_COMMON_CODES && rsp_scratch_stall)
             rsp_mem_stall <= 1;
     end
+    reg fzip_argument_decoder_go_ahead;
+    always @(posedge clk)
+        fzip_argument_decoder_go_ahead <= !fzip_argument_decoder_almost_empty || (strain_counter[2] && fzip_argument_decoder_ready);
 
-    wire fzip_stage_0 = fzip_stream_decoder_ready & !fzip_argument_decoder_almost_empty & !stall_val;
+    wire fzip_is_common_fifo_almost_full;
+    wire fzip_not_common_fifo_almost_full;
+    wire fzip_stage_0 = fzip_stream_decoder_ready & fzip_argument_decoder_go_ahead & !fzip_is_common_fifo_almost_full & !fzip_not_common_fifo_almost_full;
     integer fzip_stage_0_count;
     initial fzip_stage_0_count = 0;
     integer fzip_stage_1_count;
@@ -527,6 +537,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         fzip_value_stage_3 <= fzip_value_stage_2 | (fzip_mask_stage_2 & fzip_argument_decoder_q);
         fzip_is_common_stage_3 <= fzip_is_common_stage_2;
     end
+    /*
     always @(posedge clk) begin
         if(fzip_stage_0) begin
             $display("fzip_stage_0: %d", fzip_stage_0_count);
@@ -556,22 +567,21 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
             fzip_stage_2_count = fzip_stage_2_count + 1;
         end
     end
+    */
 
     //TODO: bit fifo
     reg fzip_is_common_fifo_pop;
     wire fzip_is_common_fifo_q;
     wire fzip_is_common_fifo_full;
     wire fzip_is_common_fifo_empty;
-    wire fzip_is_common_fifo_almost_full;
-    std_fifo #(.WIDTH(1), .DEPTH(64), .LATENCY(0)) fzip_is_common_fifo(rst, clk, fzip_stage_3, fzip_is_common_fifo_pop, fzip_is_common_stage_3, fzip_is_common_fifo_q, fzip_is_common_fifo_full, fzip_is_common_fifo_empty, , , fzip_is_common_fifo_almost_full);
+    std_fifo #(.WIDTH(1), .DEPTH(64), .LATENCY(0), .ALMOST_FULL_COUNT(3)) fzip_is_common_fifo(rst, clk, fzip_stage_3, fzip_is_common_fifo_pop, fzip_is_common_stage_3, fzip_is_common_fifo_q, fzip_is_common_fifo_full, fzip_is_common_fifo_empty, , , fzip_is_common_fifo_almost_full);
 
     //TODO: value fifo
     reg fzip_not_common_fifo_pop;
     wire [63:0] fzip_not_common_fifo_q;
     wire fzip_not_common_fifo_full;
     wire fzip_not_common_fifo_empty;
-    wire fzip_not_common_fifo_almost_full;
-    std_fifo #(64, 32) fzip_not_common_fifo(rst, clk, fzip_stage_3 && !fzip_is_common_stage_3, fzip_not_common_fifo_pop, fzip_value_stage_3, fzip_not_common_fifo_q, fzip_not_common_fifo_full, fzip_not_common_fifo_empty, , , fzip_not_common_fifo_almost_full);
+    std_fifo #(.WIDTH(64), .DEPTH(32), .ALMOST_FULL_COUNT(3)) fzip_not_common_fifo(rst, clk, fzip_stage_3 && !fzip_is_common_stage_3, fzip_not_common_fifo_pop, fzip_value_stage_3, fzip_not_common_fifo_q, fzip_not_common_fifo_full, fzip_not_common_fifo_empty, , , fzip_not_common_fifo_almost_full);
 
     always @* begin
         req_scratch_ld = fzip_stage_3 && fzip_is_common_stage_3;

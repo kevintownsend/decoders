@@ -43,12 +43,12 @@ module sparse_matrix_decoder_tb;
     end
 
     initial begin
-        #1000000 $display("watchdog timer reached");
+        #10000000 $display("watchdog timer reached");
         $finish;
     end
-    reg [63:0] mock_main_memory [0:100000 - 1];
+    reg [63:0] mock_main_memory [0:1000000 - 1];
     //initial $readmemh("example.hex", mock_main_memory);
-    initial $readmemh("cant0.hex", mock_main_memory);
+    initial $readmemh("consph0.hex", mock_main_memory);
     /*
 struct SmacHeader{
     ull r0;
@@ -279,6 +279,8 @@ struct SmacHeader{
     initial push_val_count = 0;
     always @(posedge clk) begin
         if(push_index) begin
+            //if(push_index_count >= 121)
+            //    $finish;
             $display("push_index: row: %d col: %d", row, col);
             push_index_count = push_index_count + 1;
         end
