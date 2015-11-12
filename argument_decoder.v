@@ -18,7 +18,7 @@ module argument_decoder(clk, rst, push, d, q, full, half_full, ready, pop, almos
     wire [INTERMEDIATE_WIDTH - 1:0] fifo_q;
     wire fifo_empty, fifo_almost_empty, fifo_almost_full;
     localparam LOG2_FIFO_DEPTH = log2(32 - 1);
-    asymmetric_fifo #(.WIDTH_IN(WIDTH_IN), .WIDTH_OUT(INTERMEDIATE_WIDTH), .DEPTH_IN(32), .ALMOST_EMPTY_COUNT(3), .ALMOST_FULL_COUNT(16)) fifo(rst, clk, push, fifo_pop, d, fifo_q, full, fifo_empty, , fifo_almost_empty, half_full);
+    asymmetric_fifo #(.WIDTH_IN(WIDTH_IN), .WIDTH_OUT(INTERMEDIATE_WIDTH), .DEPTH_IN(32), .ALMOST_EMPTY_COUNT(4), .ALMOST_FULL_COUNT(16)) fifo(rst, clk, push, fifo_pop, d, fifo_q, full, fifo_empty, , fifo_almost_empty, half_full);
     wire vld_full;
     wire [LOG2_BUFFER_WIDTH - 1:0] vld_size;
     always @*
@@ -30,5 +30,11 @@ module argument_decoder(clk, rst, push, d, q, full, half_full, ready, pop, almos
     assign almost_empty = fifo_almost_empty;
     //variable_length_decoder vld();
     //TODO: finish
+    always @(posedge clk) begin
+        if(pop && !ready) begin
+            $display("ERROR: underflow at %m");
+            $finish;
+        end
+    end
     `include "common.vh"
 endmodule

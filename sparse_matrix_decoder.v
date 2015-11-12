@@ -308,8 +308,17 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg [4:0] spm_argument_decoder_pop;
     wire spm_argument_decoder_almost_empty;
     argument_decoder #(31, 64, 32) spm_argument_decoder(clk, rst, spm_argument_decoder_push, linked_list_fifo_q, spm_argument_decoder_q, spm_argument_decoder_full, spm_argument_decoder_half_full, spm_argument_decoder_ready, spm_argument_decoder_pop, spm_argument_decoder_almost_empty);
+    reg [2:0] strain_counter;
+    initial strain_counter = 0;
+    reg spm_argument_decoder_go_ahead;
+    always @(posedge clk) begin
+        strain_counter <= strain_counter + 1;
+        if(strain_counter[2])
+            strain_counter[2] <= 0;
+        spm_argument_decoder_go_ahead <= spm_argument_decoder_almost_empty || (strain_counter[2] && spm_argument_decoder_ready);
+    end
 
-    wire spm_stage_0 = spm_stream_decoder_ready && spm_argument_decoder_almost_empty && !stall_index; //TODO: fix with almost empty and counter
+    wire spm_stage_0 = spm_stream_decoder_ready && spm_argument_decoder_go_ahead && !stall_index; //TODO: fix with almost empty and counter
 
     integer stage_1_count, stage_0_count;
     initial begin
@@ -521,6 +530,10 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     always @(posedge clk) begin
         if(fzip_stage_0) begin
             $display("fzip_stage_0: %d", fzip_stage_0_count);
+            $display("fzip_argument_decoder_almost_empty: %d", fzip_argument_decoder_almost_empty);
+            $display("fzip_argument_decoder_ready: %d", fzip_argument_decoder_ready);
+            $display("what maddness is this?: %d", fzip_argument_decoder.fifo.count);
+            $display("what maddness is this?: %d %d", fzip_argument_decoder.fifo.r_beg, fzip_argument_decoder.fifo.r_end);
             fzip_stage_0_count = fzip_stage_0_count + 1;
         end
         if(fzip_stage_1) begin

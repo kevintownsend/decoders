@@ -33,7 +33,7 @@ module variable_length_decoder(clk, rst, push, full, size, pop, d, q);
             next_buffer_end = next_buffer_end + WIDTH_IN;
         end
     end
-    assign full = buffer_end > (BUFFER_WIDTH - WIDTH_IN);
+    assign full = (buffer_end - pop) > (BUFFER_WIDTH - WIDTH_IN);
     assign size = buffer_end;
     assign q = buffer[WIDTH_OUT - 1:0];
     `include "common.vh"
