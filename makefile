@@ -11,7 +11,6 @@ vsim_sparse_matrix_decoder_tb = work/sparse_matrix_decoder_tb
 vsim_linked_list_fifo = work/linked_list_fifo
 vsim_std_fifo = work/std_fifo
 
-
 $(vsim_variable_length_decoder): variable_length_decoder.v
 	vlog variable_length_decoder.v +incdir+../common
 
