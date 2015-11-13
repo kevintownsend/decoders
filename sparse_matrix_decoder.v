@@ -712,22 +712,22 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         memory_response_fifo_1_pop = 0;
         memory_response_fifo_2_pop = 0;
         memory_response_fifo_3_pop = 0;
-        if(!memory_response_fifo_0_empty) begin
+        if(!memory_response_fifo_0_empty && !input_fifos_almost_full[0]) begin
             $display("here0");
             next_spm_stream_decoder_push = 1;
             memory_response_fifo_0_pop = 1;
         end
-        if(!memory_response_fifo_1_empty) begin
+        if(!memory_response_fifo_1_empty && !input_fifos_almost_full[1]) begin
             $display("here1");
             next_spm_argument_decoder_push = 1;
             memory_response_fifo_1_pop = 1;
         end
-        if(!memory_response_fifo_2_empty) begin
+        if(!memory_response_fifo_2_empty && !input_fifos_almost_full[2]) begin
             $display("here2");
             next_fzip_stream_decoder_push = 1;
             memory_response_fifo_2_pop = 1;
         end
-        if(!memory_response_fifo_3_empty) begin
+        if(!memory_response_fifo_3_empty && !input_fifos_almost_full[3]) begin
             next_fzip_argument_decoder_push = 1;
             memory_response_fifo_3_pop = 1;
         end
