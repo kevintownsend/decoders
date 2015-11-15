@@ -251,7 +251,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire memory_response_fifo_0_empty;
     wire memory_response_fifo_0_almost_empty;
     wire memory_response_fifo_0_almost_full;
-    localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
+    localparam INITIAL_RESPONSE_FIFO_DEPTH = 1024;
     std_fifo #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_0(rst, clk, memory_response_fifo_push && rsp_mem_tag == 0, memory_response_fifo_0_pop, rsp_mem_q, memory_response_fifo_0_q, memory_respones_fifo_0_full, memory_response_fifo_0_empty, , memory_response_fifo_0_almost_empty, memory_response_fifo_0_almost_full);
 
     reg memory_response_fifo_1_pop;
