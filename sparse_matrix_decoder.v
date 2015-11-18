@@ -128,27 +128,6 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         next_registers[REGISTERS_START + 7] = register_11;
         next_registers[REGISTERS_START + 8] = register_12;
         next_registers[REGISTERS_START + 9] = register_13;
-        if(opcode_active) begin
-            case(op[OPCODE_ARG_PE - 1:0])
-                OP_RST: begin
-                    $display("@verilog: decoder reset");
-                    next_rst = 1;
-                    next_state = IDLE;
-                end
-                OP_LD_DELTA_CODES:
-                    next_state = LD_DELTA_CODES;
-                OP_LD_PREFIX_CODES:
-                    next_state = LD_PREFIX_CODES;
-                OP_LD_COMMON_CODES:
-                    next_state = LD_COMMON_CODES;
-                OP_STEADY:
-                    next_state = STEADY_1;
-                OP_LD:
-                    for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
-                        if(i == op[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
-                            next_registers[i] = op[63:OPCODE_ARG_2];
-            endcase
-        end
         case(state)
             IDLE:
                 busy = 0;
@@ -241,6 +220,48 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
             next_registers[REGISTERS_START + 8] = register_12 - 1;
         if(fzip_stage_6)
             next_registers[REGISTERS_START + 9] = register_13 - 1;
+        if(opcode_active) begin
+            case(op[OPCODE_ARG_PE - 1:0])
+                OP_RST: begin
+                    $display("@verilog: decoder reset");
+                    next_rst = 1;
+                    next_state = IDLE;
+                end
+                OP_LD_DELTA_CODES: begin
+                    next_state = LD_DELTA_CODES;
+                    $display("@verilog: %m loading delta codes");
+                    for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1) begin
+                        $display("@verilog: r[%d] = %d", i, registers[i]);
+                    end
+                end
+                OP_LD_PREFIX_CODES: begin
+                    next_state = LD_PREFIX_CODES;
+                    $display("@verilog: %m loading prefix codes");
+                    for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1) begin
+                        $display("@verilog: r[%d] = %d", i, registers[i]);
+                    end
+                end
+                OP_LD_COMMON_CODES: begin
+                    next_state = LD_COMMON_CODES;
+                    $display("@verilog: %m loading common codes");
+                    for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1) begin
+                        $display("@verilog: r[%d] = %d", i, registers[i]);
+                    end
+                end
+                OP_STEADY: begin
+                    next_state = STEADY_1;
+                    $display("@verilog: %m starting steady state");
+                    for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1) begin
+                        $display("@verilog: r[%d] = %d", i, registers[i]);
+                    end
+                end
+                OP_LD: begin
+                    for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
+                        if(i == op[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
+                            next_registers[i] = op[63:OPCODE_ARG_2];
+                end
+            endcase
+        end
     end
 
     reg memory_response_fifo_push;
@@ -738,6 +759,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     //Debug
     // synthesis translate_off
     always @(posedge clk) begin
+        $display("@verilog: %m debug:");
+        $display("@verilog: state: %d stall: %d", state, busy);
         //$display("@verilog decoder debug: %d", $time);
         //$display("@verilog: state: %d", state);
         //$display("@verilog: rst: %d", rst);
