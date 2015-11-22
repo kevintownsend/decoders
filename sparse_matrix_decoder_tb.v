@@ -1,4 +1,8 @@
 module sparse_matrix_decoder_tb;
+    parameter ID = 0;
+    parameter REGISTERS_START = 4;
+    parameter REGISTERS_END = REGISTERS_START + 10;
+    `include "smac.vh"
 
     reg clk;
     reg [63:0] op;
@@ -304,4 +308,5 @@ struct SmacHeader{
         end
         */
     end
+    `include "common.vh"
 endmodule

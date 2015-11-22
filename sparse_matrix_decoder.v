@@ -6,11 +6,10 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     stall_val);
     parameter ID = 0;
     parameter REGISTERS_START = 2;
-    parameter SUB_WIDTH = 4;
-    parameter SUB_HEIGHT = 2;
     parameter REGISTERS_END = REGISTERS_START + 10;
     localparam LOG2_SUB_WIDTH = log2(SUB_WIDTH - 1);
     localparam LOG2_SUB_HEIGHT = log2(SUB_HEIGHT - 1);
+    `include "smac.vh"
 
     input clk;
     input [63:0] op;
@@ -344,7 +343,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     localparam LOG2_LOG2_SPM_TABLE_DEPTH = 3;
     reg [LOG2_LOG2_SPM_TABLE_DEPTH - 1:0] spm_stream_decoder_table_code_width;
     reg [2 + 5 - 1:0] spm_stream_decoder_table_data;
-    stream_decoder #(64, 7, 7, 8) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data);
+    stream_decoder #(64, 7, SPM_MAX_CODE_LENGTH, 16) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data);
 
     always @* begin
         spm_stream_decoder_table_push = 0;
@@ -499,7 +498,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     localparam LOG2_LOG2_FZIP_TABLE_DEPTH = 4;
     reg [LOG2_LOG2_FZIP_TABLE_DEPTH - 1:0] fzip_stream_decoder_table_code_width;
     reg [64 + 8 - 1:0] fzip_stream_decoder_table_data;
-    stream_decoder #(64, 64 + 8, 9, 16) fzip_stream_decoder(clk, rst, fzip_stream_decoder_push, memory_response_fifo_2_q, fzip_stream_decoder_q, fzip_stream_decoder_full, fzip_stream_decoder_half_full, fzip_stream_decoder_ready, fzip_stream_decoder_pop, fzip_stream_decoder_table_push, fzip_stream_decoder_table_addr, fzip_stream_decoder_table_code_width, fzip_stream_decoder_table_data);
+    stream_decoder #(64, 64 + 8, FZIP_MAX_CODE_LENGTH, 16) fzip_stream_decoder(clk, rst, fzip_stream_decoder_push, memory_response_fifo_2_q, fzip_stream_decoder_q, fzip_stream_decoder_full, fzip_stream_decoder_half_full, fzip_stream_decoder_ready, fzip_stream_decoder_pop, fzip_stream_decoder_table_push, fzip_stream_decoder_table_addr, fzip_stream_decoder_table_code_width, fzip_stream_decoder_table_data);
 
     always @(posedge clk) begin
         if(spm_stream_decoder_push)
@@ -523,7 +522,6 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg [5:0] fzip_argument_decoder_pop;
     wire fzip_argument_decoder_almost_empty;
     argument_decoder #(63, 64, 64) fzip_argument_decoder(clk, rst, fzip_argument_decoder_push, memory_response_fifo_3_q, fzip_argument_decoder_q, fzip_argument_decoder_full, fzip_argument_decoder_half_full, fzip_argument_decoder_ready, fzip_argument_decoder_pop, fzip_argument_decoder_almost_empty);
-
 
     //common codes
 
