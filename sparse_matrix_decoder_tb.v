@@ -34,7 +34,7 @@ module sparse_matrix_decoder_tb;
     wire [63:0] val;
     reg stall_val;
 
-    sparse_matrix_decoder #(0, 4, 8, 512) dut(clk, op, busy, req_mem_ld, req_mem_addr,
+    sparse_matrix_decoder #(0, REGISTERS_START) dut(clk, op, busy, req_mem_ld, req_mem_addr,
     req_mem_tag, req_mem_stall, rsp_mem_push, rsp_mem_tag, rsp_mem_q,
     rsp_mem_stall, req_scratch_ld, req_scratch_st, req_scratch_addr,
     req_scratch_d, req_scratch_stall, rsp_scratch_push, rsp_scratch_q,
@@ -101,23 +101,23 @@ struct SmacHeader{
         $display("starting to load delta codes");
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+2;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START;
         op[63:OPCODE_ARG_2] = spmCodesPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+6;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 4;
         op[63:OPCODE_ARG_2] = fzipCodesPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+3;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 1;
         op[63:OPCODE_ARG_2] = 0;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+7;
-        op[63:OPCODE_ARG_2] = 2**7*8;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 5;
+        op[63:OPCODE_ARG_2] = 2**SPM_MAX_CODE_LENGTH*8;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD_DELTA_CODES;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
@@ -130,23 +130,23 @@ struct SmacHeader{
         $display("starting to load prefix codes");
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+2;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START;
         op[63:OPCODE_ARG_2] = fzipCodesPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+6;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 4;
         op[63:OPCODE_ARG_2] = commonDoublesPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+3;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 1;
         op[63:OPCODE_ARG_2] = 0;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+7;
-        op[63:OPCODE_ARG_2] = 2**9*8*2;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 5;
+        op[63:OPCODE_ARG_2] = 2**FZIP_MAX_CODE_LENGTH*8*2;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD_PREFIX_CODES;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
@@ -161,23 +161,23 @@ struct SmacHeader{
         $display("starting to load common codes");
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+2;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START;
         op[63:OPCODE_ARG_2] = commonDoublesPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+6;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 4;
         op[63:OPCODE_ARG_2] = spmCodeStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+3;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 1;
         op[63:OPCODE_ARG_2] = 0;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+7;
-        op[63:OPCODE_ARG_2] = 2**9*16;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 5;
+        op[63:OPCODE_ARG_2] = COMMON_VALUE_DEPTH;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD_COMMON_CODES;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;

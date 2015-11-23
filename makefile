@@ -85,4 +85,4 @@ clean:
 	rm -rf work
 
 vim:
-	vim -p makefile ../std_fifo/std_fifo.v ../../src/smac/spMatrixHelp/spm.hpp sparse_matrix_decoder.v sparse_matrix_decoder_tb.v spmv_opcodes.vh stream_decoder.v stream_decoder_tb.v argument_decoder.v argument_decoder_tb.v ../ram/asymmetric_distributed_ram.v ../asymmetric_fifo/asymmetric_fifo.v variable_length_decoder.v variable_length_decoder_tb.v
+	vim -p makefile ../std_fifo/std_fifo.v ../../src/smac/spMatrixHelp/spm.hpp sparse_matrix_decoder.v sparse_matrix_decoder_tb.v smac.vh spmv_opcodes.vh stream_decoder.v stream_decoder_tb.v argument_decoder.v argument_decoder_tb.v ../ram/asymmetric_distributed_ram.v ../asymmetric_fifo/asymmetric_fifo.v variable_length_decoder.v variable_length_decoder_tb.v

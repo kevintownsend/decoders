@@ -7,8 +7,6 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     parameter ID = 0;
     parameter REGISTERS_START = 2;
     parameter REGISTERS_END = REGISTERS_START + 10;
-    localparam LOG2_SUB_WIDTH = log2(SUB_WIDTH - 1);
-    localparam LOG2_SUB_HEIGHT = log2(SUB_HEIGHT - 1);
     `include "smac.vh"
 
     input clk;
@@ -337,19 +335,19 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire spm_stream_decoder_ready;
     reg spm_stream_decoder_pop;
     reg spm_stream_decoder_table_push;
-    localparam SPM_TABLE_DEPTH = 2**7;
-    localparam LOG2_SPM_TABLE_DEPTH = 7;
-    reg [LOG2_SPM_TABLE_DEPTH - 1:0] spm_stream_decoder_table_addr;
-    localparam LOG2_LOG2_SPM_TABLE_DEPTH = 3;
-    reg [LOG2_LOG2_SPM_TABLE_DEPTH - 1:0] spm_stream_decoder_table_code_width;
+    //localparam SPM_TABLE_DEPTH = 2**7;
+    //localparam LOG2_SPM_TABLE_DEPTH = 7;
+    reg [SPM_MAX_CODE_LENGTH - 1:0] spm_stream_decoder_table_addr;
+    //localparam LOG2_LOG2_SPM_TABLE_DEPTH = 3;
+    reg [LOG2_SPM_MAX_CODE_LENGTH - 1:0] spm_stream_decoder_table_code_width;
     reg [2 + 5 - 1:0] spm_stream_decoder_table_data;
     stream_decoder #(64, 7, SPM_MAX_CODE_LENGTH, 16) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data);
 
     always @* begin
         spm_stream_decoder_table_push = 0;
         spm_stream_decoder_table_addr = register_5 / 8;
-        spm_stream_decoder_table_code_width = rsp_mem_q[2:0];
-        spm_stream_decoder_table_data = rsp_mem_q[9:3];
+        spm_stream_decoder_table_code_width = rsp_mem_q[LOG2_SPM_MAX_CODE_LENGTH - 1:0];
+        spm_stream_decoder_table_data = rsp_mem_q[5 + 2 + LOG2_SPM_MAX_CODE_LENGTH - 1 -: 5 + 2];
         if(state == LD_DELTA_CODES && rsp_mem_push)
             spm_stream_decoder_table_push = 1;
     end
@@ -757,8 +755,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     //Debug
     // synthesis translate_off
     always @(posedge clk) begin
-        $display("@verilog: %m debug:");
-        $display("@verilog: state: %d stall: %d", state, busy);
+        //$display("@verilog: %m debug:");
+        //$display("@verilog: state: %d stall: %d", state, busy);
         //$display("@verilog decoder debug: %d", $time);
         //$display("@verilog: state: %d", state);
         //$display("@verilog: rst: %d", rst);
