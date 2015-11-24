@@ -1,0 +1,9 @@
+localparam FZIP_MAX_CODE_LENGTH = 9;
+localparam SPM_MAX_CODE_LENGTH = 9;
+localparam LOG2_SPM_MAX_CODE_LENGTH = log2(SPM_MAX_CODE_LENGTH);
+localparam SUB_WIDTH = 8;
+localparam SUB_HEIGHT = 512;
+localparam LOG2_SUB_WIDTH = log2(SUB_WIDTH - 1);
+localparam LOG2_SUB_HEIGHT = log2(SUB_HEIGHT - 1);
+localparam LOG2_COMMON_VALUE_DEPTH = 13;
+localparam COMMON_VALUE_DEPTH = 2**LOG2_COMMON_VALUE_DEPTH;
