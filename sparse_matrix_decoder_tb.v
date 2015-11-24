@@ -177,7 +177,7 @@ struct SmacHeader{
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
         op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 5;
-        op[63:OPCODE_ARG_2] = COMMON_VALUE_DEPTH;
+        op[63:OPCODE_ARG_2] = COMMON_VALUE_DEPTH * 8;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD_COMMON_CODES;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
