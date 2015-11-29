@@ -10,6 +10,8 @@ vsim_sparse_matrix_decoder = work/sparse_matrix_decoder
 vsim_sparse_matrix_decoder_tb = work/sparse_matrix_decoder_tb
 vsim_linked_list_fifo = work/linked_list_fifo
 vsim_std_fifo = work/std_fifo
+vsim_in_flight_tracker = work/in_flight_tracker
+vsim_in_flight_tracker_tb = work/in_flight_tracker_tb
 
 $(vsim_variable_length_decoder): variable_length_decoder.v
 	vlog variable_length_decoder.v +incdir+../common
@@ -47,6 +49,12 @@ $(vsim_linked_list_fifo): work ../linked_list_fifo/linked_list_fifo.v
 $(vsim_std_fifo): work ../std_fifo/std_fifo.v
 	vlog ../std_fifo/std_fifo.v +incdir+../common
 
+$(vsim_in_flight_tracker): work in_flight_tracker.v
+	vlog in_flight_tracker.v +incdir+../common
+
+$(vsim_in_flight_tracker_tb): work in_flight_tracker_tb.v
+	vlog in_flight_tracker_tb.v +incdir+../common
+
 example.hex: ../../src/example.hex
 	cp ../../src/example.hex .
 
@@ -65,7 +73,10 @@ argument_decoder_sim: work $(vsim_argument_decoder) $(vsim_argument_decoder_tb) 
 stream_decoder_sim: work $(vsim_stream_decoder) $(vsim_stream_decoder_tb) $(vsim_argument_decoder) $(vsim_variable_length_decoder) $(vsim_asymmetric_fifo) $(vsim_asymmetric_distributed_ram)
 	echo -e "vsim work.stream_decoder_tb\nrun -all" | vsim
 
-sim: sparse_matrix_decoder_sim
+in_flight_tracker_sim: work $(vsim_in_flight_tracker) $(vsim_in_flight_tracker_tb)
+	echo -e "vsim work.in_flight_tracker_tb\nrun -all" | vsim
+
+sim: in_flight_tracker_sim
 
 stream_decoder.prj:
 	echo -e "verilog work variable_length_decoder.v\nverilog work ../ram/asymmetric_distributed_ram.v\nverilog work ../asymmetric_fifo/asymmetric_fifo.v\nverilog work argument_decoder.v\nverilog work stream_decoder.v" > stream_decoder.prj
@@ -85,4 +96,4 @@ clean:
 	rm -rf work
 
 vim:
-	vim -p makefile ../std_fifo/std_fifo.v ../../src/smac/spMatrixHelp/spm.hpp sparse_matrix_decoder.v sparse_matrix_decoder_tb.v smac.vh spmv_opcodes.vh stream_decoder.v stream_decoder_tb.v argument_decoder.v argument_decoder_tb.v ../ram/asymmetric_distributed_ram.v ../asymmetric_fifo/asymmetric_fifo.v variable_length_decoder.v variable_length_decoder_tb.v
+	vim -p makefile sparse_matrix_decoder.v sparse_matrix_decoder_tb.v in_flight_tracker.v in_flight_tracker_tb.v ../std_fifo/std_fifo.v ../../src/smac/spMatrixHelp/spm.hpp smac.vh spmv_opcodes.vh stream_decoder.v stream_decoder_tb.v argument_decoder.v argument_decoder_tb.v ../ram/asymmetric_distributed_ram.v ../asymmetric_fifo/asymmetric_fifo.v variable_length_decoder.v variable_length_decoder_tb.v

@@ -1,4 +1,4 @@
-module in_flight_tracker(clk, push, push_tag, pop, pop_tag, read, count, ready);
+module in_flight_tracker(clk, push, push_tag, pop, pop_tag, ready);
     parameter COLORS = 4;
     parameter MIN_DEPTH = 32;
     parameter MAX_DEPTH = 512;
@@ -10,8 +10,6 @@ module in_flight_tracker(clk, push, push_tag, pop, pop_tag, read, count, ready);
     input [LOG2_COLORS - 1:0] push_tag;
     input pop;
     input [LOG2_COLORS - 1:0] pop_tag;
-    input [LOG2_COLORS - 1:0] read;
-    output [LOG2_MAX_DEPTH - 1:0] count;
     output ready;
 
     reg [LOG2_MAX_DEPTH - 1:0] push_count [0:COLORS - 1];
@@ -38,7 +36,7 @@ module in_flight_tracker(clk, push, push_tag, pop, pop_tag, read, count, ready);
     end
 
     //TODO: make output faster
-    assign count = push_count[read] - pop_count[read];
+    wire [LOG2_MAX_DEPTH - 1:0] count = push_count[push_tag] - pop_count[push_tag];
     assign ready = (total < HEAD_ROOM) || (count < 32);
 
     `include "common.vh"

@@ -260,6 +260,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
             endcase
         end
     end
+    in_flight_counter
 
     reg memory_response_fifo_push;
     //localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
