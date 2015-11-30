@@ -106,6 +106,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire [47:0] register_12 = registers[12];
     wire [47:0] register_13 = registers[13];
     reg [0:3] memory_response_not_starving;
+    wire in_flight_not_full;
     always @* begin
         req_mem_ld = 0;
         req_mem_addr = register_4;
@@ -166,10 +167,11 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 end
             end
             STEADY_1: begin //index code stream
-                if(!r2_eq_r6 && !req_mem_stall && !memory_response_not_starving[0]) begin
+                req_mem_tag = 0;
+                //if(!r2_eq_r6 && !req_mem_stall && !memory_response_not_starving[0]) begin
+                if(!r2_eq_r6 && !req_mem_stall && in_flight_not_full) begin
                     next_registers[REGISTERS_START] = r2_plus_8;
                     req_mem_ld = 1;
-                    req_mem_tag = 0;
                 end
                 if(recurring_timer || memory_response_not_starving[0] || r2_eq_r6)
                     next_state = STEADY_2;
@@ -178,32 +180,32 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 end
             end
             STEADY_2: begin //index stream arguments
-                if(!r3_eq_r7 && !req_mem_stall && !memory_response_not_starving[1]) begin
+                req_mem_tag = 1;
+                if(!r3_eq_r7 && !req_mem_stall && in_flight_not_full) begin
                     next_registers[REGISTERS_START + 1] = r3_plus_8;
                     req_mem_ld = 1;
-                    req_mem_tag = 1;
                     req_mem_addr = register_5;
                 end
                 if(recurring_timer ||  memory_response_not_starving[1] || r3_eq_r7)
                     next_state = STEADY_3;
             end
             STEADY_3: begin //floating point code stream
-                if(!r4_eq_r8 && !req_mem_stall && !memory_response_not_starving[2]) begin
+                req_mem_tag = 2;
+                if(!r4_eq_r8 && !req_mem_stall && in_flight_not_full) begin
                     next_registers[REGISTERS_START + 2] = r4_plus_8;
                     req_mem_ld = 1;
-                    req_mem_tag = 2;
                     req_mem_addr = register_6;
                 end
                 if(recurring_timer ||  memory_response_not_starving[2] || r4_eq_r8)
                     next_state = STEADY_4;
             end
             STEADY_4: begin //floating point argument stream
-                if(!r5_eq_r9 && !req_mem_stall && !memory_response_not_starving[3]) begin
+                req_mem_tag = 3;
+                if(!r5_eq_r9 && !req_mem_stall && in_flight_not_full) begin
                     //$display("here");
                     //$finish;
                     next_registers[REGISTERS_START + 3] = r5_plus_8;
                     req_mem_ld = 1;
-                    req_mem_tag = 3;
                     req_mem_addr = register_7;
                 end
                 if(recurring_timer ||  memory_response_not_starving[3] || r5_eq_r9)
@@ -260,7 +262,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
             endcase
         end
     end
-    in_flight_counter
+    reg memory_response_fifo_pop;
+    reg [1:0] memory_response_fifo_pop_tag;
+    in_flight_tracker #(4, 32, 512) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop, memory_response_fifo_pop_tag, in_flight_not_full);
 
     reg memory_response_fifo_push;
     //localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
@@ -270,7 +274,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire memory_response_fifo_0_empty;
     wire memory_response_fifo_0_almost_empty;
     wire memory_response_fifo_0_almost_full;
-    localparam INITIAL_RESPONSE_FIFO_DEPTH = 1024;
+    localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
     std_fifo #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_0(rst, clk, memory_response_fifo_push && rsp_mem_tag == 0, memory_response_fifo_0_pop, rsp_mem_q, memory_response_fifo_0_q, memory_respones_fifo_0_full, memory_response_fifo_0_empty, , memory_response_fifo_0_almost_empty, memory_response_fifo_0_almost_full);
 
     reg memory_response_fifo_1_pop;
@@ -298,8 +302,6 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     std_fifo  #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_3(rst, clk, memory_response_fifo_push && rsp_mem_tag == 3, memory_response_fifo_3_pop, rsp_mem_q, memory_response_fifo_3_q, memory_respones_fifo_3_full, memory_response_fifo_3_empty, , memory_response_fifo_3_almost_empty, memory_response_fifo_3_almost_full);
 
     wire [63:0] linked_list_fifo_q;
-    reg memory_response_fifo_pop;
-    reg [1:0] memory_response_fifo_pop_tag;
     wire memory_response_fifo_empty;
     wire memory_response_fifo_full;
     wire memory_response_fifo_almost_full;
@@ -730,6 +732,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         memory_response_fifo_1_pop = 0;
         memory_response_fifo_2_pop = 0;
         memory_response_fifo_3_pop = 0;
+        /*
         if(!memory_response_fifo_0_empty && !input_fifos_almost_full[0]) begin
             $display("here0");
             next_spm_stream_decoder_push = 1;
@@ -749,6 +752,31 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
             next_fzip_argument_decoder_push = 1;
             memory_response_fifo_3_pop = 1;
         end
+        */
+        case(input_arbiter)
+            0: if(!memory_response_fifo_0_empty) begin
+                next_spm_stream_decoder_push = 1;
+                memory_response_fifo_0_pop = 1;
+                memory_response_fifo_pop = 1;
+            end
+            1: if(!memory_response_fifo_1_empty) begin
+                next_spm_argument_decoder_push = 1;
+                memory_response_fifo_1_pop = 1;
+                memory_response_fifo_pop = 1;
+            end
+            2: if(!memory_response_fifo_2_empty) begin
+                next_fzip_stream_decoder_push = 1;
+                memory_response_fifo_2_pop = 1;
+                memory_response_fifo_pop = 1;
+            end
+            3: if(!memory_response_fifo_3_empty) begin
+                next_fzip_argument_decoder_push = 1;
+                memory_response_fifo_3_pop = 1;
+                memory_response_fifo_pop = 1;
+            end
+            default: begin
+            end
+        endcase
     end
     //TODO: stream decoders and luts
     //TODO: deltas to indices logic

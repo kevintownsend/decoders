@@ -61,7 +61,7 @@ example.hex: ../../src/example.hex
 work:
 	vlib work
 
-sparse_matrix_decoder_sim: work $(vsim_sparse_matrix_decoder_tb) $(vsim_sparse_matrix_decoder) $(vsim_variable_length_decoder) $(vsim_argument_decoder) $(vsim_asymmetric_fifo) $(vsim_asymmetric_distributed_ram) $(vsim_stream_decoder) example.hex $(vsim_linked_list_fifo) $(vsim_std_fifo)
+sparse_matrix_decoder_sim: work $(vsim_sparse_matrix_decoder_tb) $(vsim_sparse_matrix_decoder) $(vsim_variable_length_decoder) $(vsim_argument_decoder) $(vsim_asymmetric_fifo) $(vsim_asymmetric_distributed_ram) $(vsim_stream_decoder) example.hex $(vsim_linked_list_fifo) $(vsim_std_fifo) $(vsim_in_flight_tracker)
 	echo -e "vsim work.sparse_matrix_decoder_tb\nrun -all" | vsim
 
 vld_sim: work $(vsim_variable_length_decoder) $(vsim_variable_length_decoder_tb)
