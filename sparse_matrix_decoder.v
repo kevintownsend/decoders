@@ -41,6 +41,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     reg [47:0] registers[REGISTERS_START : REGISTERS_END - 1];
     reg [47:0] next_registers[REGISTERS_START : REGISTERS_END - 1];
+    //TODO: default initialization
     `include "spmv_opcodes.vh"
 
     reg [2:0] state, next_state;
@@ -52,6 +53,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     localparam STEADY_2 = 5;
     localparam STEADY_3 = 6;
     localparam STEADY_4 = 7;
+    initial state = IDLE;
     wire r2_eq_r6 = registers[REGISTERS_START] == registers[REGISTERS_START + 4];
     wire r3_eq_r7 = registers[REGISTERS_START + 1] == registers[REGISTERS_START + 5];
     wire r4_eq_r8 = registers[REGISTERS_START + 2] == registers[REGISTERS_START + 6];
@@ -61,6 +63,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     integer i;
     reg all_eq, rst, next_rst;
+    initial rst = 1;
     always @(posedge clk) begin
         all_eq <= r2_eq_r6 & r3_eq_r7 & r4_eq_r8 & r5_eq_r9 & registers[REGISTERS_START + 8][47] & registers[REGISTERS_START + 9][47];
         rst <= next_rst;
@@ -88,6 +91,17 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     wire opcode_active = op[OPCODE_ARG_1 - 1] || (op[OPCODE_ARG_1 - 2:OPCODE_ARG_PE] == ID);
 
+    reg next_req_mem_ld;
+    reg [47:0] next_req_mem_addr;
+    reg [1:0] next_req_mem_tag;
+    reg req_mem_stall_r;
+    always @(posedge clk) begin
+        req_mem_stall_r <= req_mem_stall;
+        req_mem_ld <= next_req_mem_ld;
+        req_mem_addr <= next_req_mem_addr;
+        req_mem_tag <= next_req_mem_tag;
+    end
+
     wire spm_stream_decoder_half_full;
     wire spm_argument_decoder_half_full;
     wire fzip_stream_decoder_half_full;
@@ -108,9 +122,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg [0:3] memory_response_not_starving;
     wire in_flight_not_full;
     always @* begin
-        req_mem_ld = 0;
-        req_mem_addr = register_4;
-        req_mem_tag = 0;
+        next_req_mem_ld = 0;
+        next_req_mem_addr = register_4;
+        next_req_mem_tag = 0;
         busy = 1;
         next_rst = 0;
         next_state = state;
@@ -130,9 +144,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
             IDLE:
                 busy = 0;
             LD_DELTA_CODES: begin
-                if(!r2_eq_r6 && !req_mem_stall) begin
+                if(!r2_eq_r6 && !req_mem_stall_r) begin
                     next_registers[REGISTERS_START] = r2_plus_8;
-                    req_mem_ld = 1;
+                    next_req_mem_ld = 1;
                 end
                 if(r3_eq_r7)
                     next_state = IDLE;
@@ -141,9 +155,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 end
             end
             LD_PREFIX_CODES: begin
-                if(!r2_eq_r6 && !req_mem_stall) begin
+                if(!r2_eq_r6 && !req_mem_stall_r) begin
                     next_registers[REGISTERS_START] = r2_plus_8;
-                    req_mem_ld = 1;
+                    next_req_mem_ld = 1;
                 end
                 if(r3_eq_r7) begin
                     next_state = IDLE;
@@ -155,9 +169,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
             end
             LD_COMMON_CODES: begin
-                if(!r2_eq_r6 && !req_mem_stall) begin
+                if(!r2_eq_r6 && !req_mem_stall_r) begin
                     next_registers[REGISTERS_START] = r2_plus_8;
-                    req_mem_ld = 1;
+                    next_req_mem_ld = 1;
                 end
                 if(r3_eq_r7) begin
                     next_state = IDLE;
@@ -167,11 +181,10 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 end
             end
             STEADY_1: begin //index code stream
-                req_mem_tag = 0;
-                //if(!r2_eq_r6 && !req_mem_stall && !memory_response_not_starving[0]) begin
-                if(!r2_eq_r6 && !req_mem_stall && in_flight_not_full) begin
+                next_req_mem_tag = 0;
+                if(!r2_eq_r6 && !req_mem_stall_r && in_flight_not_full) begin
                     next_registers[REGISTERS_START] = r2_plus_8;
-                    req_mem_ld = 1;
+                    next_req_mem_ld = 1;
                 end
                 if(recurring_timer || !in_flight_not_full || r2_eq_r6)
                     next_state = STEADY_2;
@@ -180,33 +193,31 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 end
             end
             STEADY_2: begin //index stream arguments
-                req_mem_tag = 1;
-                if(!r3_eq_r7 && !req_mem_stall && in_flight_not_full) begin
+                next_req_mem_tag = 1;
+                next_req_mem_addr = register_5;
+                if(!r3_eq_r7 && !req_mem_stall_r && in_flight_not_full) begin
                     next_registers[REGISTERS_START + 1] = r3_plus_8;
-                    req_mem_ld = 1;
-                    req_mem_addr = register_5;
+                    next_req_mem_ld = 1;
                 end
                 if(recurring_timer || !in_flight_not_full || r3_eq_r7)
                     next_state = STEADY_3;
             end
             STEADY_3: begin //floating point code stream
-                req_mem_tag = 2;
-                if(!r4_eq_r8 && !req_mem_stall && in_flight_not_full) begin
+                next_req_mem_tag = 2;
+                next_req_mem_addr = register_6;
+                if(!r4_eq_r8 && !req_mem_stall_r && in_flight_not_full) begin
                     next_registers[REGISTERS_START + 2] = r4_plus_8;
-                    req_mem_ld = 1;
-                    req_mem_addr = register_6;
+                    next_req_mem_ld = 1;
                 end
                 if(recurring_timer || !in_flight_not_full || r4_eq_r8)
                     next_state = STEADY_4;
             end
             STEADY_4: begin //floating point argument stream
-                req_mem_tag = 3;
-                if(!r5_eq_r9 && !req_mem_stall && in_flight_not_full) begin
-                    //$display("here");
-                    //$finish;
+                next_req_mem_tag = 3;
+                next_req_mem_addr = register_7;
+                if(!r5_eq_r9 && !req_mem_stall_r && in_flight_not_full) begin
                     next_registers[REGISTERS_START + 3] = r5_plus_8;
-                    req_mem_ld = 1;
-                    req_mem_addr = register_7;
+                    next_req_mem_ld = 1;
                 end
                 if(recurring_timer || !in_flight_not_full || r5_eq_r9)
                     next_state = STEADY_1;
@@ -687,7 +698,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     //input arbitration
     reg [2:0] input_arbiter;
-    initial input_arbiter = 0;
+    initial input_arbiter = 4;
     wire [0:3] input_fifos_full = {spm_stream_decoder_full, spm_argument_decoder_full, fzip_stream_decoder_full, fzip_argument_decoder_full};
     reg [0:3] input_fifos_almost_full;
     always @(posedge clk) input_fifos_almost_full <= {spm_stream_decoder_half_full, spm_argument_decoder_half_full, fzip_stream_decoder_half_full, fzip_argument_decoder_half_full};
