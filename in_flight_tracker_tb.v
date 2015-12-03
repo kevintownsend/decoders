@@ -25,7 +25,7 @@ module in_flight_tracker_tb;
         pop = 0;
         pop_tag = 0;
         read = 0;
-        #10;
+        #100;
         i = 0;
         while(ready) begin
             push = 1;
