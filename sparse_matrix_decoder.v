@@ -275,7 +275,13 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     end
     reg memory_response_fifo_pop;
     reg [1:0] memory_response_fifo_pop_tag;
-    in_flight_tracker #(4, 32, 512) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop, memory_response_fifo_pop_tag, in_flight_not_full);
+    reg memory_response_fifo_pop_delay;
+    reg [1:0] memory_response_fifo_pop_tag_delay;
+    always @(posedge clk) begin
+        memory_response_fifo_pop_delay <= memory_response_fifo_pop;
+        memory_response_fifo_pop_tag_delay <= memory_response_fifo_pop_tag;
+    end
+    in_flight_tracker #(4, 32, 256) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop_delay, memory_response_fifo_pop_tag_delay, next_req_mem_tag, in_flight_not_full);
 
     reg memory_response_fifo_push;
     //localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
@@ -553,6 +559,11 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         rsp_mem_stall <= |{memory_response_fifo_0_almost_full, memory_response_fifo_1_almost_full, memory_response_fifo_2_almost_full, memory_response_fifo_3_almost_full};
         if(rsp_mem_stall) begin
             $display("@verilog: rsp_mem_stall high at %m at time %d", $time);
+            $display("@verilog: total: %d", tracker.total);
+            $display("@verilog: fifo0 count: %d", initial_response_fifo_0.count);
+            $display("@verilog: fifo0 count: %d", initial_response_fifo_1.count);
+            $display("@verilog: fifo0 count: %d", initial_response_fifo_2.count);
+            $display("@verilog: fifo0 count: %d", initial_response_fifo_3.count);
         end
         if(state == LD_COMMON_CODES && rsp_scratch_stall)
             rsp_mem_stall <= 1;
