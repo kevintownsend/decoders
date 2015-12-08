@@ -89,7 +89,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire [47:0] r4_plus_8 = registers[REGISTERS_START + 2] + 8;
     wire [47:0] r5_plus_8 = registers[REGISTERS_START + 3] + 8;
 
-    wire opcode_active = op[OPCODE_ARG_1 - 1] || (op[OPCODE_ARG_1 - 2:OPCODE_ARG_PE] == ID);
+    reg [63:0] op_r;
+    always @(posedge clk) op_r <= op;
+    wire opcode_active = op_r[OPCODE_ARG_1 - 1] || (op_r[OPCODE_ARG_1 - 2:OPCODE_ARG_PE] == ID);
 
     reg next_req_mem_ld;
     reg [47:0] next_req_mem_addr;
@@ -233,7 +235,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         if(fzip_stage_6)
             next_registers[REGISTERS_START + 9] = register_13 - 1;
         if(opcode_active) begin
-            case(op[OPCODE_ARG_PE - 1:0])
+            case(op_r[OPCODE_ARG_PE - 1:0])
                 OP_RST: begin
                     $display("@verilog: decoder reset");
                     next_rst = 1;
@@ -269,8 +271,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                 end
                 OP_LD: begin
                     for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
-                        if(i == op[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
-                            next_registers[i] = op[63:OPCODE_ARG_2];
+                        if(i == op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
+                            next_registers[i] = op_r[63:OPCODE_ARG_2];
                 end
             endcase
         end
