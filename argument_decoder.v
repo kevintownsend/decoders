@@ -1,10 +1,11 @@
-module argument_decoder(clk, rst, push, d, q, full, half_full, ready, pop, almost_empty);
+module argument_decoder(clk, rst, push, d, q, full, half_full, ready, pop, almost_empty, almost_full);
     parameter WIDTH_OUT = 64;
     parameter WIDTH_IN = 64;
     parameter INTERMEDIATE_WIDTH = WIDTH_OUT;
     parameter LOG2_WIDTH_OUT = log2(WIDTH_OUT);
     parameter BUFFER_WIDTH = WIDTH_OUT + INTERMEDIATE_WIDTH;
     parameter LOG2_BUFFER_WIDTH = log2(BUFFER_WIDTH);
+    parameter ALMOST_FULL_COUNT = 1;
     input clk, rst;
     input push;
     input [WIDTH_IN - 1:0] d;
@@ -14,11 +15,14 @@ module argument_decoder(clk, rst, push, d, q, full, half_full, ready, pop, almos
     output ready;
     input [LOG2_WIDTH_OUT - 1:0] pop;
     output almost_empty;
+    output almost_full;
     reg fifo_pop;
     wire [INTERMEDIATE_WIDTH - 1:0] fifo_q;
-    wire fifo_empty, fifo_almost_empty, fifo_almost_full;
+    wire fifo_empty, fifo_almost_empty;
     localparam LOG2_FIFO_DEPTH = log2(32 - 1);
-    asymmetric_fifo #(.WIDTH_IN(WIDTH_IN), .WIDTH_OUT(INTERMEDIATE_WIDTH), .DEPTH_IN(32), .ALMOST_EMPTY_COUNT(4), .ALMOST_FULL_COUNT(16)) fifo(rst, clk, push, fifo_pop, d, fifo_q, full, fifo_empty, , fifo_almost_empty, half_full);
+    wire [LOG2_FIFO_DEPTH - 1:0] fifo_count;
+    asymmetric_fifo #(.WIDTH_IN(WIDTH_IN), .WIDTH_OUT(INTERMEDIATE_WIDTH), .DEPTH_IN(32), .ALMOST_EMPTY_COUNT(4), .ALMOST_FULL_COUNT(ALMOST_FULL_COUNT)) fifo(rst, clk, push, fifo_pop, d, fifo_q, full, fifo_empty, fifo_count, fifo_almost_empty, almost_full);
+    assign half_full = fifo_count[LOG2_FIFO_DEPTH - 1];
     wire vld_full;
     wire [LOG2_BUFFER_WIDTH - 1:0] vld_size;
     always @*

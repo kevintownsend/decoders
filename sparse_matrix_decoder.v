@@ -276,12 +276,15 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg memory_response_fifo_pop;
     reg [1:0] memory_response_fifo_pop_tag;
     reg memory_response_fifo_pop_delay;
+    initial memory_response_fifo_pop_delay = 0;
     reg [1:0] memory_response_fifo_pop_tag_delay;
     always @(posedge clk) begin
         memory_response_fifo_pop_delay <= memory_response_fifo_pop;
         memory_response_fifo_pop_tag_delay <= memory_response_fifo_pop_tag;
     end
-    in_flight_tracker #(4, 32, 256) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop_delay, memory_response_fifo_pop_tag_delay, next_req_mem_tag, in_flight_not_full);
+    localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
+    localparam MIN_IN_FLIGHT = 32;
+    in_flight_tracker #(4, MIN_IN_FLIGHT, INITIAL_RESPONSE_FIFO_DEPTH) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop_delay, memory_response_fifo_pop_tag_delay, next_req_mem_tag, in_flight_not_full);
 
     reg memory_response_fifo_push;
     //localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
@@ -291,7 +294,6 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire memory_response_fifo_0_empty;
     wire memory_response_fifo_0_almost_empty;
     wire memory_response_fifo_0_almost_full;
-    localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
     std_fifo #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_0(rst, clk, memory_response_fifo_push && rsp_mem_tag == 0, memory_response_fifo_0_pop, rsp_mem_q, memory_response_fifo_0_q, memory_respones_fifo_0_full, memory_response_fifo_0_empty, , memory_response_fifo_0_almost_empty, memory_response_fifo_0_almost_full);
 
     reg memory_response_fifo_1_pop;
@@ -361,7 +363,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     //localparam LOG2_LOG2_SPM_TABLE_DEPTH = 3;
     reg [LOG2_SPM_MAX_CODE_LENGTH - 1:0] spm_stream_decoder_table_code_width;
     reg [2 + 5 - 1:0] spm_stream_decoder_table_data;
-    stream_decoder #(64, 7, SPM_MAX_CODE_LENGTH, 16) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data);
+    wire spm_stream_decoder_almost_full;
+    stream_decoder #(64, 7, SPM_MAX_CODE_LENGTH, 16) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data, spm_stream_decoder_almost_full);
 
     always @* begin
         spm_stream_decoder_table_push = 0;
@@ -378,7 +381,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire spm_argument_decoder_ready;
     reg [4:0] spm_argument_decoder_pop;
     wire spm_argument_decoder_almost_empty;
-    argument_decoder #(31, 64, 32) spm_argument_decoder(clk, rst, spm_argument_decoder_push, memory_response_fifo_1_q, spm_argument_decoder_q, spm_argument_decoder_full, spm_argument_decoder_half_full, spm_argument_decoder_ready, spm_argument_decoder_pop, spm_argument_decoder_almost_empty);
+    wire spm_argument_decoder_almost_full;
+    argument_decoder #(31, 64, 32) spm_argument_decoder(clk, rst, spm_argument_decoder_push, memory_response_fifo_1_q, spm_argument_decoder_q, spm_argument_decoder_full, spm_argument_decoder_half_full, spm_argument_decoder_ready, spm_argument_decoder_pop, spm_argument_decoder_almost_empty, spm_argument_decoder_almost_full);
     reg [2:0] strain_counter;
     initial strain_counter = 0;
     reg spm_argument_decoder_go_ahead;
@@ -516,7 +520,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     localparam LOG2_LOG2_FZIP_TABLE_DEPTH = 4;
     reg [LOG2_LOG2_FZIP_TABLE_DEPTH - 1:0] fzip_stream_decoder_table_code_width;
     reg [64 + 8 - 1:0] fzip_stream_decoder_table_data;
-    stream_decoder #(64, 64 + 8, FZIP_MAX_CODE_LENGTH, 16) fzip_stream_decoder(clk, rst, fzip_stream_decoder_push, memory_response_fifo_2_q, fzip_stream_decoder_q, fzip_stream_decoder_full, fzip_stream_decoder_half_full, fzip_stream_decoder_ready, fzip_stream_decoder_pop, fzip_stream_decoder_table_push, fzip_stream_decoder_table_addr, fzip_stream_decoder_table_code_width, fzip_stream_decoder_table_data);
+    wire fzip_stream_decoder_almost_full;
+    stream_decoder #(64, 64 + 8, FZIP_MAX_CODE_LENGTH, 16) fzip_stream_decoder(clk, rst, fzip_stream_decoder_push, memory_response_fifo_2_q, fzip_stream_decoder_q, fzip_stream_decoder_full, fzip_stream_decoder_half_full, fzip_stream_decoder_ready, fzip_stream_decoder_pop, fzip_stream_decoder_table_push, fzip_stream_decoder_table_addr, fzip_stream_decoder_table_code_width, fzip_stream_decoder_table_data, fzip_stream_decoder_almost_full);
 
     always @(posedge clk) begin
         if(spm_stream_decoder_push)
@@ -539,7 +544,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire fzip_argument_decoder_ready;
     reg [5:0] fzip_argument_decoder_pop;
     wire fzip_argument_decoder_almost_empty;
-    argument_decoder #(63, 64, 64) fzip_argument_decoder(clk, rst, fzip_argument_decoder_push, memory_response_fifo_3_q, fzip_argument_decoder_q, fzip_argument_decoder_full, fzip_argument_decoder_half_full, fzip_argument_decoder_ready, fzip_argument_decoder_pop, fzip_argument_decoder_almost_empty);
+    wire fzip_argument_decoder_almost_full;
+    argument_decoder #(63, 64, 64) fzip_argument_decoder(clk, rst, fzip_argument_decoder_push, memory_response_fifo_3_q, fzip_argument_decoder_q, fzip_argument_decoder_full, fzip_argument_decoder_half_full, fzip_argument_decoder_ready, fzip_argument_decoder_pop, fzip_argument_decoder_almost_empty, fzip_argument_decoder_almost_full);
 
     //common codes
 

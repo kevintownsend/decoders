@@ -12,7 +12,8 @@ module argument_decoder_tb;
     wire half_full;
     wire ready;
     reg [LOG2_WIDTH_OUT:0] pop;
-    argument_decoder #(WIDTH_OUT, WIDTH_IN) dut(clk, rst, push, d, q, full, half_full, ready, pop);
+    wire alomst_full;
+    argument_decoder #(WIDTH_OUT, WIDTH_IN) dut(clk, rst, push, d, q, full, half_full, ready, pop, almost_full);
 
     initial begin
         clk = 0;
