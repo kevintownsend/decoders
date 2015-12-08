@@ -2,7 +2,7 @@ module in_flight_tracker(clk, push, push_tag, pop, pop_tag, ready_tag, ready);
     parameter COLORS = 4;
     parameter MIN_DEPTH = 32;
     parameter MAX_DEPTH = 512;
-    localparam HEAD_ROOM = MAX_DEPTH - COLORS * MIN_DEPTH;
+    parameter HEAD_ROOM = MAX_DEPTH - COLORS * MIN_DEPTH;
     localparam LOG2_COLORS = log2(COLORS - 1);
     localparam LOG2_MAX_DEPTH = log2(MAX_DEPTH - 1);
     input clk;

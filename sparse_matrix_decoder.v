@@ -121,6 +121,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire [47:0] register_13 = registers[13];
     reg [0:3] memory_response_not_starving;
     wire in_flight_not_full;
+    reg [0:3] input_fifos_half_full;
     always @* begin
         next_req_mem_ld = 0;
         next_req_mem_addr = register_4;
@@ -186,7 +187,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                     next_registers[REGISTERS_START] = r2_plus_8;
                     next_req_mem_ld = 1;
                 end
-                if(recurring_timer || !in_flight_not_full || r2_eq_r6)
+                if(recurring_timer || !in_flight_not_full || r2_eq_r6 || input_fifos_half_full[0])
                     next_state = STEADY_2;
                 if(all_eq) begin
                     next_state = IDLE;
@@ -199,7 +200,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                     next_registers[REGISTERS_START + 1] = r3_plus_8;
                     next_req_mem_ld = 1;
                 end
-                if(recurring_timer || !in_flight_not_full || r3_eq_r7)
+                if(recurring_timer || !in_flight_not_full || r3_eq_r7 || input_fifos_half_full[1])
                     next_state = STEADY_3;
             end
             STEADY_3: begin //floating point code stream
@@ -209,7 +210,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                     next_registers[REGISTERS_START + 2] = r4_plus_8;
                     next_req_mem_ld = 1;
                 end
-                if(recurring_timer || !in_flight_not_full || r4_eq_r8)
+                if(recurring_timer || !in_flight_not_full || r4_eq_r8 || input_fifos_half_full[2])
                     next_state = STEADY_4;
             end
             STEADY_4: begin //floating point argument stream
@@ -219,7 +220,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                     next_registers[REGISTERS_START + 3] = r5_plus_8;
                     next_req_mem_ld = 1;
                 end
-                if(recurring_timer || !in_flight_not_full || r5_eq_r9)
+                //if(recurring_timer || !in_flight_not_full || r5_eq_r9 || input_fifos_half_full[3])
+                if(!in_flight_not_full || r5_eq_r9)
                     next_state = STEADY_1;
             end
         endcase
@@ -283,8 +285,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         memory_response_fifo_pop_tag_delay <= memory_response_fifo_pop_tag;
     end
     localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
-    localparam MIN_IN_FLIGHT = 32;
-    in_flight_tracker #(4, MIN_IN_FLIGHT, INITIAL_RESPONSE_FIFO_DEPTH) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop_delay, memory_response_fifo_pop_tag_delay, next_req_mem_tag, in_flight_not_full);
+    localparam MIN_IN_FLIGHT = 500;
+    in_flight_tracker #(4, MIN_IN_FLIGHT, MIN_IN_FLIGHT * 4, INITIAL_RESPONSE_FIFO_DEPTH) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop_delay, memory_response_fifo_pop_tag_delay, next_req_mem_tag, in_flight_not_full);
 
     reg memory_response_fifo_push;
     //localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
@@ -364,7 +366,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg [LOG2_SPM_MAX_CODE_LENGTH - 1:0] spm_stream_decoder_table_code_width;
     reg [2 + 5 - 1:0] spm_stream_decoder_table_data;
     wire spm_stream_decoder_almost_full;
-    stream_decoder #(64, 7, SPM_MAX_CODE_LENGTH, 16) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data, spm_stream_decoder_almost_full);
+    stream_decoder #(.WIDTH_IN(64), .WIDTH_OUT(7), .MAX_CODE_LENGTH(SPM_MAX_CODE_LENGTH), .INTERMEDIATE_WIDTH(16), .ALMOST_FULL_COUNT(4)) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data, spm_stream_decoder_almost_full);
 
     always @* begin
         spm_stream_decoder_table_push = 0;
@@ -382,7 +384,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg [4:0] spm_argument_decoder_pop;
     wire spm_argument_decoder_almost_empty;
     wire spm_argument_decoder_almost_full;
-    argument_decoder #(31, 64, 32) spm_argument_decoder(clk, rst, spm_argument_decoder_push, memory_response_fifo_1_q, spm_argument_decoder_q, spm_argument_decoder_full, spm_argument_decoder_half_full, spm_argument_decoder_ready, spm_argument_decoder_pop, spm_argument_decoder_almost_empty, spm_argument_decoder_almost_full);
+    argument_decoder #(.WIDTH_OUT(31), .WIDTH_IN(64), .INTERMEDIATE_WIDTH(32), .ALMOST_FULL_COUNT(4)) spm_argument_decoder(clk, rst, spm_argument_decoder_push, memory_response_fifo_1_q, spm_argument_decoder_q, spm_argument_decoder_full, spm_argument_decoder_half_full, spm_argument_decoder_ready, spm_argument_decoder_pop, spm_argument_decoder_almost_empty, spm_argument_decoder_almost_full);
     reg [2:0] strain_counter;
     initial strain_counter = 0;
     reg spm_argument_decoder_go_ahead;
@@ -521,7 +523,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg [LOG2_LOG2_FZIP_TABLE_DEPTH - 1:0] fzip_stream_decoder_table_code_width;
     reg [64 + 8 - 1:0] fzip_stream_decoder_table_data;
     wire fzip_stream_decoder_almost_full;
-    stream_decoder #(64, 64 + 8, FZIP_MAX_CODE_LENGTH, 16) fzip_stream_decoder(clk, rst, fzip_stream_decoder_push, memory_response_fifo_2_q, fzip_stream_decoder_q, fzip_stream_decoder_full, fzip_stream_decoder_half_full, fzip_stream_decoder_ready, fzip_stream_decoder_pop, fzip_stream_decoder_table_push, fzip_stream_decoder_table_addr, fzip_stream_decoder_table_code_width, fzip_stream_decoder_table_data, fzip_stream_decoder_almost_full);
+    stream_decoder #(.WIDTH_IN(64), .WIDTH_OUT(64 + 8), .MAX_CODE_LENGTH(FZIP_MAX_CODE_LENGTH), .INTERMEDIATE_WIDTH(16), .ALMOST_FULL_COUNT(4)) fzip_stream_decoder(clk, rst, fzip_stream_decoder_push, memory_response_fifo_2_q, fzip_stream_decoder_q, fzip_stream_decoder_full, fzip_stream_decoder_half_full, fzip_stream_decoder_ready, fzip_stream_decoder_pop, fzip_stream_decoder_table_push, fzip_stream_decoder_table_addr, fzip_stream_decoder_table_code_width, fzip_stream_decoder_table_data, fzip_stream_decoder_almost_full);
 
     always @(posedge clk) begin
         if(spm_stream_decoder_push)
@@ -545,7 +547,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     reg [5:0] fzip_argument_decoder_pop;
     wire fzip_argument_decoder_almost_empty;
     wire fzip_argument_decoder_almost_full;
-    argument_decoder #(63, 64, 64) fzip_argument_decoder(clk, rst, fzip_argument_decoder_push, memory_response_fifo_3_q, fzip_argument_decoder_q, fzip_argument_decoder_full, fzip_argument_decoder_half_full, fzip_argument_decoder_ready, fzip_argument_decoder_pop, fzip_argument_decoder_almost_empty, fzip_argument_decoder_almost_full);
+    argument_decoder #(.WIDTH_OUT(63), .WIDTH_IN(64), .INTERMEDIATE_WIDTH(64), .ALMOST_FULL_COUNT(4)) fzip_argument_decoder(clk, rst, fzip_argument_decoder_push, memory_response_fifo_3_q, fzip_argument_decoder_q, fzip_argument_decoder_full, fzip_argument_decoder_half_full, fzip_argument_decoder_ready, fzip_argument_decoder_pop, fzip_argument_decoder_almost_empty, fzip_argument_decoder_almost_full);
 
     //common codes
 
@@ -718,7 +720,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     initial input_arbiter = 4;
     wire [0:3] input_fifos_full = {spm_stream_decoder_full, spm_argument_decoder_full, fzip_stream_decoder_full, fzip_argument_decoder_full};
     reg [0:3] input_fifos_almost_full;
-    always @(posedge clk) input_fifos_almost_full <= {spm_stream_decoder_half_full, spm_argument_decoder_half_full, fzip_stream_decoder_half_full, fzip_argument_decoder_half_full};
+    always @(posedge clk) input_fifos_almost_full <= {spm_stream_decoder_almost_full, spm_argument_decoder_almost_full, fzip_stream_decoder_almost_full, fzip_argument_decoder_almost_full};
+    always @(posedge clk) input_fifos_half_full <= {spm_stream_decoder_half_full, spm_argument_decoder_half_full, fzip_stream_decoder_half_full, fzip_argument_decoder_half_full};
     reg [1:0] pseudo_rand;
     initial pseudo_rand = 0;
     always @(posedge clk)
@@ -811,7 +814,15 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     //Debug
     // synthesis translate_off
+    integer half_full_count [0:3];
+    initial for(i = 0; i < 4; i = i + 1) begin
+        half_full_count[i] = 0;
+    end
     always @(posedge clk) begin
+        for(i = 0; i < 4; i = i + 1) begin
+            if(input_fifos_half_full[i])
+                half_full_count[i] = half_full_count[i] + 1;
+        end
         //$display("@verilog: %m debug:");
         //$display("@verilog: state: %d stall: %d", state, busy);
         //$display("@verilog decoder debug: %d", $time);
