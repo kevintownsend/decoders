@@ -10,7 +10,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     `include "smac.vh"
 
     input clk;
-    input [63:0] op;
+    input [63:0] op_in;
+    output [63:0] op_out;
     output reg busy;
 
     output reg req_mem_ld;
@@ -90,7 +91,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire [47:0] r5_plus_8 = registers[REGISTERS_START + 3] + 8;
 
     reg [63:0] op_r;
-    always @(posedge clk) op_r <= op;
+    always @(posedge clk) op_r <= op_in;
     wire opcode_active = op_r[OPCODE_ARG_1 - 1] || (op_r[OPCODE_ARG_1 - 2:OPCODE_ARG_PE] == ID);
 
     reg next_req_mem_ld;
@@ -273,6 +274,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                     for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
                         if(i == op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
                             next_registers[i] = op_r[63:OPCODE_ARG_2];
+                end
+                OP_READ: begin
                 end
             endcase
         end
