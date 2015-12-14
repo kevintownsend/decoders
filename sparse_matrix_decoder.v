@@ -1,4 +1,4 @@
-module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
+module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     req_mem_tag, req_mem_stall, rsp_mem_push, rsp_mem_tag, rsp_mem_q,
     rsp_mem_stall, req_scratch_ld, req_scratch_st, req_scratch_addr,
     req_scratch_d, req_scratch_stall, rsp_scratch_push, rsp_scratch_q,
@@ -11,7 +11,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
 
     input clk;
     input [63:0] op_in;
-    output [63:0] op_out;
+    output reg [63:0] op_out;
     output reg busy;
 
     output reg req_mem_ld;
@@ -105,6 +105,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         req_mem_tag <= next_req_mem_tag;
     end
 
+    reg [63:0] next_op_out;
+    always @(posedge clk) op_out <= next_op_out;
+
     wire spm_stream_decoder_half_full;
     wire spm_argument_decoder_half_full;
     wire fzip_stream_decoder_half_full;
@@ -129,6 +132,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         next_req_mem_ld = 0;
         next_req_mem_addr = register_4;
         next_req_mem_tag = 0;
+        next_op_out = 0;
         busy = 1;
         next_rst = 0;
         next_state = state;
@@ -276,6 +280,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                             next_registers[i] = op_r[63:OPCODE_ARG_2];
                 end
                 OP_READ: begin
+                    if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < REGISTERS_END)
+                        next_op_out = {registers[op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1]], 12'HFFF};
                 end
             endcase
         end
