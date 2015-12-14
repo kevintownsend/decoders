@@ -89,6 +89,7 @@ struct SmacHeader{
     wire [63:0] fzipArgumentStreamPtr = mock_main_memory[22];
     wire [63:0] size = mock_main_memory[23];
     integer tmp;
+    integer i;
 
     `include "spmv_opcodes.vh"
     initial begin
@@ -99,7 +100,11 @@ struct SmacHeader{
         req_mem_stall = 0;
         stall_index = 0;
         stall_val = 0;
-        #100 op = OP_NOP;
+        #1
+        for(i = 16; i < 24; i = i + 1) begin
+            $display("mock_main_memory[%d] = %d", i, mock_main_memory[i]);
+        end
+        #99 op = OP_NOP;
         #100;
         $display("starting to load delta codes");
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
@@ -127,6 +132,7 @@ struct SmacHeader{
         op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 0;
         op[63:OPCODE_ARG_2] = 0;
         #10 op = OP_NOP;
+        #10;
         while(busy)begin
             #10;
         end
@@ -157,6 +163,7 @@ struct SmacHeader{
         op[63:OPCODE_ARG_2] = 0;
         #10;
         op = OP_NOP;
+        #10;
         while(busy)begin
             #10;
         end
@@ -188,58 +195,59 @@ struct SmacHeader{
         op[63:OPCODE_ARG_2] = 0;
         #10;
         op = OP_NOP;
+        #10;
         while(busy)begin
             #10;
         end
         $display("starting steady state");
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+2;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START;
         op[63:OPCODE_ARG_2] = spmCodeStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+3;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 1;
         op[63:OPCODE_ARG_2] = spmArgumentStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+4;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 2;
         op[63:OPCODE_ARG_2] = fzipCodeStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+5;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 3;
         op[63:OPCODE_ARG_2] = fzipArgumentStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+6;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 4;
         op[63:OPCODE_ARG_2] = spmArgumentStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+7;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 5;
         op[63:OPCODE_ARG_2] = fzipCodeStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+8;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 6;
         op[63:OPCODE_ARG_2] = fzipArgumentStreamPtr;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+9;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 7;
         op[63:OPCODE_ARG_2] = size;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+10;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 8;
         op[63:OPCODE_ARG_2] = nnz - 1;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_LD;
         op[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = 0;
-        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 2+11;
+        op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = REGISTERS_START + 9;
         op[63:OPCODE_ARG_2] = nnz - 1;
         #10;
         op[OPCODE_ARG_PE - 1:0] = OP_STEADY;
@@ -247,6 +255,11 @@ struct SmacHeader{
         op[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = 0;
         op[63:OPCODE_ARG_2] = 0;
         #10 op = OP_NOP;
+        #10;
+        while(busy)
+            #10;
+
+        $finish;
         //TODO: load spm codes
         //TODO: load fzip codes
         //TODO: load common codes
