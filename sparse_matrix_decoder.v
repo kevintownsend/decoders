@@ -280,8 +280,12 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                             next_registers[i] = op_r[63:OPCODE_ARG_2];
                 end
                 OP_READ: begin
-                    if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < REGISTERS_END)
-                        next_op_out = {registers[op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1]], 12'HFFF};
+                    if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < REGISTERS_END) begin
+                        next_op_out[OPCODE_ARG_PE - 1:0] = OP_RETURN;
+                        next_op_out[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = ID;
+                        next_op_out[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1];
+                        next_op_out[63:OPCODE_ARG_2] = registers[op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1]];
+                    end
                 end
             endcase
         end
@@ -834,8 +838,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
             if(input_fifos_half_full[i])
                 half_full_count[i] = half_full_count[i] + 1;
         end
-        $display("@verilog: %m debug:");
-        $display("@verilog: state: %d stall: %d", state, busy);
+        //$display("@verilog: %m debug:");
+        //$display("@verilog: state: %d stall: %d", state, busy);
         //$display("@verilog decoder debug: %d", $time);
         //$display("@verilog: state: %d", state);
         //$display("@verilog: rst: %d", rst);
