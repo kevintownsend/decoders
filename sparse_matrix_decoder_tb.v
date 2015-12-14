@@ -6,6 +6,8 @@ module sparse_matrix_decoder_tb;
 
     reg clk;
     reg [63:0] op_in;
+    reg [63:0] op;
+    always @* op_in = op;
     wire [63:0] op_out;
     wire busy;
 
