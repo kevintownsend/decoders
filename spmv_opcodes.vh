@@ -8,3 +8,4 @@ localparam OP_LD_DELTA_CODES = 3;
 localparam OP_LD_PREFIX_CODES = 4;
 localparam OP_LD_COMMON_CODES = 5;
 localparam OP_STEADY = 6;
+localparam OP_READ = 7;
