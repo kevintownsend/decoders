@@ -1,6 +1,6 @@
-localparam OPCODE_ARG_PE = 3;
-localparam OPCODE_ARG_1 = 8;
-localparam OPCODE_ARG_2 = 12;
+localparam OPCODE_ARG_PE = 4;
+localparam OPCODE_ARG_1 = 9;
+localparam OPCODE_ARG_2 = 13;
 localparam OP_NOP = 0;
 localparam OP_RST = 1;
 localparam OP_LD = 2;
@@ -9,3 +9,4 @@ localparam OP_LD_PREFIX_CODES = 4;
 localparam OP_LD_COMMON_CODES = 5;
 localparam OP_STEADY = 6;
 localparam OP_READ = 7;
+localparam OP_RETURN = 8;

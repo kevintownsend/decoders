@@ -1,4 +1,4 @@
-module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
+module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     req_mem_tag, req_mem_stall, rsp_mem_push, rsp_mem_tag, rsp_mem_q,
     rsp_mem_stall, req_scratch_ld, req_scratch_st, req_scratch_addr,
     req_scratch_d, req_scratch_stall, rsp_scratch_push, rsp_scratch_q,
@@ -10,7 +10,8 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     `include "smac.vh"
 
     input clk;
-    input [63:0] op;
+    input [63:0] op_in;
+    output reg [63:0] op_out;
     output reg busy;
 
     output reg req_mem_ld;
@@ -90,7 +91,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
     wire [47:0] r5_plus_8 = registers[REGISTERS_START + 3] + 8;
 
     reg [63:0] op_r;
-    always @(posedge clk) op_r <= op;
+    always @(posedge clk) op_r <= op_in;
     wire opcode_active = op_r[OPCODE_ARG_1 - 1] || (op_r[OPCODE_ARG_1 - 2:OPCODE_ARG_PE] == ID);
 
     reg next_req_mem_ld;
@@ -103,6 +104,9 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         req_mem_addr <= next_req_mem_addr;
         req_mem_tag <= next_req_mem_tag;
     end
+
+    reg [63:0] next_op_out;
+    always @(posedge clk) op_out <= next_op_out;
 
     wire spm_stream_decoder_half_full;
     wire spm_argument_decoder_half_full;
@@ -128,6 +132,7 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
         next_req_mem_ld = 0;
         next_req_mem_addr = register_4;
         next_req_mem_tag = 0;
+        next_op_out = 0;
         busy = 1;
         next_rst = 0;
         next_state = state;
@@ -273,6 +278,14 @@ module sparse_matrix_decoder(clk, op, busy, req_mem_ld, req_mem_addr,
                     for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
                         if(i == op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
                             next_registers[i] = op_r[63:OPCODE_ARG_2];
+                end
+                OP_READ: begin
+                    if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < REGISTERS_END) begin
+                        next_op_out[OPCODE_ARG_PE - 1:0] = OP_RETURN;
+                        next_op_out[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = ID;
+                        next_op_out[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1];
+                        next_op_out[63:OPCODE_ARG_2] = registers[op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1]];
+                    end
                 end
             endcase
         end
