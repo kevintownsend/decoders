@@ -838,8 +838,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
             if(input_fifos_half_full[i])
                 half_full_count[i] = half_full_count[i] + 1;
         end
-        //$display("@verilog: %m debug:");
-        //$display("@verilog: state: %d stall: %d", state, busy);
+        $display("@verilog: %m debug:");
+        $display("@verilog: state: %d stall: %d", state, busy);
         //$display("@verilog decoder debug: %d", $time);
         //$display("@verilog: state: %d", state);
         //$display("@verilog: rst: %d", rst);
