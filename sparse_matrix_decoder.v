@@ -43,6 +43,9 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg [47:0] registers[REGISTERS_START : REGISTERS_END - 1];
     reg [47:0] next_registers[REGISTERS_START : REGISTERS_END - 1];
     //TODO: default initialization
+    integer i;
+    initial for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
+        registers[i] = 0;
     `include "spmv_opcodes.vh"
 
     reg [2:0] state, next_state;
@@ -62,7 +65,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
 
     wire steady_state = (state == STEADY_1) || (state == STEADY_2) || (state == STEADY_3) || (state == STEADY_4);
 
-    integer i;
     reg all_eq, rst, next_rst;
     initial rst = 1;
     always @(posedge clk) begin
