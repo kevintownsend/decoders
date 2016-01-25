@@ -117,6 +117,17 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg spm_stage_4;
     reg spm_stage_5;
     reg fzip_stage_6;
+    //registers:
+    //0: index opcodes stream
+    //1: index argument stream
+    //2: fzip opcode stream
+    //3: fzip argument stream
+    //4: index opcodes end
+    //5: index argument end
+    //6: fzip opcode end
+    //7: fzip argument end
+    //8: index nnz count down
+    //9: fzip nnz count down
     wire [47:0] register_4 = registers[4];
     wire [47:0] register_5 = registers[5];
     wire [47:0] register_6 = registers[6];
