@@ -50,13 +50,13 @@ module in_flight_tracker(clk, push, push_tag, pop, pop_tag, ready_tag, ready);
     always @(posedge clk) count_stage_2 <= push_count_r_stage_1 - pop_count_r_stage_1;
     reg count_is_small_stage_3, total_is_small_stage_3;
     always @(posedge clk) begin
-        count_is_small_stage_3 <= count_stage_2 < 32;
+        count_is_small_stage_3 <= count_stage_2 < MIN_DEPTH;
         total_is_small_stage_3 <= total < HEAD_ROOM;
     end
     reg ready_stage_4;
     reg [LOG2_COLORS - 1:0] counter_stage_4;
     always @* counter_stage_4 = counter_stage_0;
-    always @(posedge clk) ready_stage_4 <= count_is_small_stage_3 || total_is_small_stage_3;
+    always @(posedge clk) ready_stage_4 <= count_is_small_stage_3 || !total_is_small_stage_3;
     reg [0:COLORS - 1] ready_array;
     always @(posedge clk) ready_array[counter_stage_4] <= ready_stage_4;
     assign ready = ready_array[ready_tag];
