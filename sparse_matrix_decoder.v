@@ -42,10 +42,17 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
 
     reg [47:0] registers[REGISTERS_START : REGISTERS_END - 1];
     reg [47:0] next_registers[REGISTERS_START : REGISTERS_END - 1];
-    //TODO: default initialization
     integer i;
     initial for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
         registers[i] = 0;
+
+    localparam DEBUG_REGISTERS_START = 22;
+    localparam DEBUG_REGISTERS_END = 30;
+    reg [47:0] debug_registers[DEBUG_REGISTERS_START:DEBUG_REGISTERS_END - 1];
+    reg [47:0] next_debug_registers[DEBUG_REGISTERS_START:DEBUG_REGISTERS_END - 1];
+    initial for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1)
+        debug_registers[i] = 0;
+
     `include "spmv_opcodes.vh"
 
     reg [2:0] state, next_state;
