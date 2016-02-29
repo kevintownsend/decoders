@@ -55,7 +55,8 @@ module sparse_matrix_decoder_tb;
     end
     reg [63:0] mock_main_memory [0:1000000 - 1];
     initial $readmemh("example.hex", mock_main_memory);
-    //initial $readmemh("consph0.hex", mock_main_memory);
+    //initial $readmemh("shipsec149.hex", mock_main_memory);
+
     /*
 struct SmacHeader{
     ull r0;
