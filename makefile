@@ -76,7 +76,7 @@ stream_decoder_sim: work $(vsim_stream_decoder) $(vsim_stream_decoder_tb) $(vsim
 in_flight_tracker_sim: work $(vsim_in_flight_tracker) $(vsim_in_flight_tracker_tb)
 	echo -e "vsim work.in_flight_tracker_tb\nrun -all" | vsim
 
-sim: in_flight_tracker_sim
+sim: sparse_matrix_decoder_sim
 
 stream_decoder.prj:
 	echo -e "verilog work variable_length_decoder.v\nverilog work ../ram/asymmetric_distributed_ram.v\nverilog work ../asymmetric_fifo/asymmetric_fifo.v\nverilog work argument_decoder.v\nverilog work stream_decoder.v" > stream_decoder.prj
