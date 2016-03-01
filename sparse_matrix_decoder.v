@@ -47,7 +47,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
         registers[i] = 0;
 
     localparam DEBUG_REGISTERS_START = 22;
-    localparam DEBUG_REGISTERS_END = 30;
+    localparam DEBUG_REGISTERS_END = DEBUG_REGISTERS_START + 8;
     reg [47:0] debug_registers[DEBUG_REGISTERS_START:DEBUG_REGISTERS_END - 1];
     reg [47:0] next_debug_registers[DEBUG_REGISTERS_START:DEBUG_REGISTERS_END - 1];
     initial for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1)
@@ -160,6 +160,15 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg [0:3] memory_response_not_starving;
     wire in_flight_not_full;
     reg [0:3] input_fifos_half_full;
+
+    wire memory_response_fifo_0_empty;
+    wire memory_response_fifo_1_empty;
+    wire memory_response_fifo_2_empty;
+    wire memory_response_fifo_3_empty;
+
+    wire fzip_is_common_fifo_almost_full;
+    wire fzip_not_common_fifo_almost_full;
+
     always @* begin
         next_req_mem_ld = 0;
         next_req_mem_addr = register_4;
@@ -319,6 +328,9 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                     for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
                         if(i == op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
                             next_registers[i] = op_r[63:OPCODE_ARG_2];
+                    for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1)
+                        if(i == op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
+                            next_debug_registers[i] = op_r[63:OPCODE_ARG_2];
                 end
                 OP_READ: begin
                     if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < REGISTERS_END) begin
@@ -327,9 +339,39 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                         next_op_out[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1];
                         next_op_out[63:OPCODE_ARG_2] = registers[op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1]];
                     end
+                    if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= DEBUG_REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < REGISTERS_END) begin
+                        next_op_out[OPCODE_ARG_PE - 1:0] = OP_RETURN;
+                        next_op_out[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = ID;
+                        next_op_out[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1];
+                        next_op_out[63:OPCODE_ARG_2] = debug_registers[op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1]];
+                    end
                 end
             endcase
         end
+        //TODO: assign debug registers
+    if(state[2]) begin //TODO: semantics
+        next_debug_registers[DEBUG_REGISTERS_START] = 0; //flags
+        //TODO: count times mac stalls
+        next_debug_registers[DEBUG_REGISTERS_START + 1] = debug_register_1 + 1;
+        if(memory_response_fifo_0_empty)
+            next_debug_registers[DEBUG_REGISTERS_START + 2] = debug_register_2 + 1;
+        if(memory_response_fifo_1_empty)
+            next_debug_registers[DEBUG_REGISTERS_START + 3] = debug_register_3 + 1;
+        if(memory_response_fifo_2_empty)
+            next_debug_registers[DEBUG_REGISTERS_START + 4] = debug_register_4 + 1;
+        if(memory_response_fifo_3_empty)
+            next_debug_registers[DEBUG_REGISTERS_START + 5] = debug_register_5 + 1;
+        if(fzip_is_common_fifo_almost_full)
+            next_debug_registers[DEBUG_REGISTERS_START + 6] = debug_register_6 + 1;
+        if(fzip_not_common_fifo_almost_full)
+            next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
+
+    end
+    if(rst) begin
+        for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1) begin
+            next_debug_registers[i] = 0;
+        end
+    end
     end
     reg memory_response_fifo_pop;
     reg [1:0] memory_response_fifo_pop_tag;
@@ -351,7 +393,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg memory_response_fifo_0_pop;
     wire [63:0] memory_response_fifo_0_q;
     wire memory_response_fifo_0_full;
-    wire memory_response_fifo_0_empty;
     wire memory_response_fifo_0_almost_empty;
     wire memory_response_fifo_0_almost_full;
     std_fifo #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_0(rst, clk, memory_response_fifo_push && rsp_mem_tag == 0, memory_response_fifo_0_pop, rsp_mem_q, memory_response_fifo_0_q, memory_respones_fifo_0_full, memory_response_fifo_0_empty, , memory_response_fifo_0_almost_empty, memory_response_fifo_0_almost_full);
@@ -359,7 +400,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg memory_response_fifo_1_pop;
     wire [63:0] memory_response_fifo_1_q;
     wire memory_response_fifo_1_full;
-    wire memory_response_fifo_1_empty;
     wire memory_response_fifo_1_almost_empty;
     wire memory_response_fifo_1_almost_full;
     std_fifo #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_1(rst, clk, memory_response_fifo_push && rsp_mem_tag == 1, memory_response_fifo_1_pop, rsp_mem_q, memory_response_fifo_1_q, memory_respones_fifo_1_full, memory_response_fifo_1_empty, , memory_response_fifo_1_almost_empty, memory_response_fifo_1_almost_full);
@@ -367,7 +407,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg memory_response_fifo_2_pop;
     wire [63:0] memory_response_fifo_2_q;
     wire memory_response_fifo_2_full;
-    wire memory_response_fifo_2_empty;
     wire memory_response_fifo_2_almost_empty;
     wire memory_response_fifo_2_almost_full;
     std_fifo  #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_2(rst, clk, memory_response_fifo_push && rsp_mem_tag == 2, memory_response_fifo_2_pop, rsp_mem_q, memory_response_fifo_2_q, memory_respones_fifo_2_full, memory_response_fifo_2_empty, , memory_response_fifo_2_almost_empty, memory_response_fifo_2_almost_full);
@@ -375,7 +414,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg memory_response_fifo_3_pop;
     wire [63:0] memory_response_fifo_3_q;
     wire memory_response_fifo_3_full;
-    wire memory_response_fifo_3_empty;
     wire memory_response_fifo_3_almost_empty;
     wire memory_response_fifo_3_almost_full;
     std_fifo  #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_3(rst, clk, memory_response_fifo_push && rsp_mem_tag == 3, memory_response_fifo_3_pop, rsp_mem_q, memory_response_fifo_3_q, memory_respones_fifo_3_full, memory_response_fifo_3_empty, , memory_response_fifo_3_almost_empty, memory_response_fifo_3_almost_full);
@@ -638,8 +676,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     always @(posedge clk)
         fzip_argument_decoder_go_ahead <= !fzip_argument_decoder_almost_empty || (strain_counter[2] && fzip_argument_decoder_ready);
 
-    wire fzip_is_common_fifo_almost_full;
-    wire fzip_not_common_fifo_almost_full;
     wire fzip_stage_0 = fzip_stream_decoder_ready & fzip_argument_decoder_go_ahead & !fzip_is_common_fifo_almost_full & !fzip_not_common_fifo_almost_full;
     integer fzip_stage_0_count;
     initial fzip_stage_0_count = 0;
