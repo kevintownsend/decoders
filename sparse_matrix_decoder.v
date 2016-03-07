@@ -348,11 +348,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                 end
             endcase
         end
-<<<<<<< HEAD
-        if(state[2]) begin
-        end
-=======
-        //TODO: assign debug registers
     if(state[2]) begin //TODO: semantics
         next_debug_registers[DEBUG_REGISTERS_START] = 0; //flags
         //TODO: count times mac stalls
@@ -376,7 +371,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
             next_debug_registers[i] = 0;
         end
     end
->>>>>>> f755a9566ab4dc230f1e6492b82a04c628e2a837
     end
     reg memory_response_fifo_pop;
     reg [1:0] memory_response_fifo_pop_tag;
