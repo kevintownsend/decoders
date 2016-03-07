@@ -339,7 +339,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                         next_op_out[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1];
                         next_op_out[63:OPCODE_ARG_2] = registers[op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1]];
                     end
-                    if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= DEBUG_REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < REGISTERS_END) begin
+                    if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= DEBUG_REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < DEBUG_REGISTERS_END) begin
                         next_op_out[OPCODE_ARG_PE - 1:0] = OP_RETURN;
                         next_op_out[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = ID;
                         next_op_out[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1];
