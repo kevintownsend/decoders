@@ -79,6 +79,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
         rst <= next_rst;
         for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
             registers[i] <= next_registers[i];
+        for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1)
+            debug_registers[i] <= next_debug_registers[i];
         state <= next_state;
         if(rst) begin
             $display("@verilog: sparse_matrix_decoder reset");
@@ -145,6 +147,16 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     wire [47:0] register_11 = registers[11];
     wire [47:0] register_12 = registers[12];
     wire [47:0] register_13 = registers[13];
+
+    wire [47:0] debug_register_0 = debug_registers[DEBUG_REGISTERS_START];
+    wire [47:0] debug_register_1 = debug_registers[DEBUG_REGISTERS_START + 1];
+    wire [47:0] debug_register_2 = debug_registers[DEBUG_REGISTERS_START + 2];
+    wire [47:0] debug_register_3 = debug_registers[DEBUG_REGISTERS_START + 3];
+    wire [47:0] debug_register_4 = debug_registers[DEBUG_REGISTERS_START + 4];
+    wire [47:0] debug_register_5 = debug_registers[DEBUG_REGISTERS_START + 5];
+    wire [47:0] debug_register_6 = debug_registers[DEBUG_REGISTERS_START + 6];
+    wire [47:0] debug_register_7 = debug_registers[DEBUG_REGISTERS_START + 7];
+
     reg [0:3] memory_response_not_starving;
     wire in_flight_not_full;
     reg [0:3] input_fifos_half_full;
@@ -168,6 +180,15 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
         next_registers[REGISTERS_START + 7] = register_11;
         next_registers[REGISTERS_START + 8] = register_12;
         next_registers[REGISTERS_START + 9] = register_13;
+
+        next_debug_registers[DEBUG_REGISTERS_START] = debug_register_0;
+        next_debug_registers[DEBUG_REGISTERS_START + 1] = debug_register_1;
+        next_debug_registers[DEBUG_REGISTERS_START + 2] = debug_register_2;
+        next_debug_registers[DEBUG_REGISTERS_START + 3] = debug_register_3;
+        next_debug_registers[DEBUG_REGISTERS_START + 4] = debug_register_4;
+        next_debug_registers[DEBUG_REGISTERS_START + 5] = debug_register_5;
+        next_debug_registers[DEBUG_REGISTERS_START + 6] = debug_register_6;
+        next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7;
         case(state)
             IDLE:
                 busy = 0;
@@ -308,6 +329,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                     end
                 end
             endcase
+        end
+        if(state[2]) begin
         end
     end
     reg memory_response_fifo_pop;
