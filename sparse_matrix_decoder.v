@@ -72,11 +72,14 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
 
     wire steady_state = (state == STEADY_1) || (state == STEADY_2) || (state == STEADY_3) || (state == STEADY_4);
 
-    reg all_eq, rst, next_rst;
+    reg all_eq;
+    reg rst, rst_1, rst_2, next_rst;
     initial rst = 1;
     always @(posedge clk) begin
         all_eq <= r2_eq_r6 & r3_eq_r7 & r4_eq_r8 & r5_eq_r9 & registers[REGISTERS_START + 8][47] & registers[REGISTERS_START + 9][47];
-        rst <= next_rst;
+        rst_1 <= next_rst;
+        rst_2 <= rst_1;
+        rst <= rst_2;
         for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
             registers[i] <= next_registers[i];
         for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1)
@@ -339,7 +342,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                         next_op_out[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1];
                         next_op_out[63:OPCODE_ARG_2] = registers[op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1]];
                     end
-                    if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= DEBUG_REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < REGISTERS_END) begin
+                    if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= DEBUG_REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < DEBUG_REGISTERS_END) begin
                         next_op_out[OPCODE_ARG_PE - 1:0] = OP_RETURN;
                         next_op_out[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = ID;
                         next_op_out[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1];
@@ -349,29 +352,29 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
             endcase
         end
         //TODO: assign debug registers
-    if(state[2]) begin //TODO: semantics
-        next_debug_registers[DEBUG_REGISTERS_START] = 0; //flags
-        //TODO: count times mac stalls
-        next_debug_registers[DEBUG_REGISTERS_START + 1] = debug_register_1 + 1;
-        if(memory_response_fifo_0_empty)
-            next_debug_registers[DEBUG_REGISTERS_START + 2] = debug_register_2 + 1;
-        if(memory_response_fifo_1_empty)
-            next_debug_registers[DEBUG_REGISTERS_START + 3] = debug_register_3 + 1;
-        if(memory_response_fifo_2_empty)
-            next_debug_registers[DEBUG_REGISTERS_START + 4] = debug_register_4 + 1;
-        if(memory_response_fifo_3_empty)
-            next_debug_registers[DEBUG_REGISTERS_START + 5] = debug_register_5 + 1;
-        if(fzip_is_common_fifo_almost_full)
-            next_debug_registers[DEBUG_REGISTERS_START + 6] = debug_register_6 + 1;
-        if(fzip_not_common_fifo_almost_full)
-            next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
+        if(steady_state) begin //TODO: semantics
+            next_debug_registers[DEBUG_REGISTERS_START] = 0; //flags
+            //TODO: count times mac stalls
+            next_debug_registers[DEBUG_REGISTERS_START + 1] = debug_register_1 + 1;
+            if(memory_response_fifo_0_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 2] = debug_register_2 + 1;
+            if(memory_response_fifo_1_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 3] = debug_register_3 + 1;
+            if(memory_response_fifo_2_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 4] = debug_register_4 + 1;
+            if(memory_response_fifo_3_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 5] = debug_register_5 + 1;
+            if(fzip_is_common_fifo_almost_full)
+                next_debug_registers[DEBUG_REGISTERS_START + 6] = debug_register_6 + 1;
+            if(fzip_not_common_fifo_almost_full)
+                next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
 
-    end
-    if(rst) begin
-        for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1) begin
-            next_debug_registers[i] = 0;
         end
-    end
+        if(rst) begin
+            for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1) begin
+                next_debug_registers[i] = 0;
+            end
+        end
     end
     reg memory_response_fifo_pop;
     reg [1:0] memory_response_fifo_pop_tag;
@@ -749,14 +752,14 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     end
     */
 
-    //TODO: bit fifo
+    //bit fifo
     reg fzip_is_common_fifo_pop;
     wire fzip_is_common_fifo_q;
     wire fzip_is_common_fifo_full;
     wire fzip_is_common_fifo_empty;
     std_fifo #(.WIDTH(1), .DEPTH(64), .LATENCY(0), .ALMOST_FULL_COUNT(3)) fzip_is_common_fifo(rst, clk, fzip_stage_3, fzip_is_common_fifo_pop, fzip_is_common_stage_3, fzip_is_common_fifo_q, fzip_is_common_fifo_full, fzip_is_common_fifo_empty, , , fzip_is_common_fifo_almost_full);
 
-    //TODO: value fifo
+    //value fifo
     reg fzip_not_common_fifo_pop;
     wire [63:0] fzip_not_common_fifo_q;
     wire fzip_not_common_fifo_full;
@@ -764,6 +767,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     std_fifo #(.WIDTH(64), .DEPTH(32), .ALMOST_FULL_COUNT(3)) fzip_not_common_fifo(rst, clk, fzip_stage_3 && !fzip_is_common_stage_3, fzip_not_common_fifo_pop, fzip_value_stage_3, fzip_not_common_fifo_q, fzip_not_common_fifo_full, fzip_not_common_fifo_empty, , , fzip_not_common_fifo_almost_full);
 
     always @* begin
+        //TODO: A better job of get best performance out of scratch pad
         req_scratch_ld = fzip_stage_3 && fzip_is_common_stage_3;
     end
 
@@ -917,8 +921,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
             if(input_fifos_half_full[i])
                 half_full_count[i] = half_full_count[i] + 1;
         end
-        $display("@verilog: %m debug:");
-        $display("@verilog: state: %d stall: %d", state, busy);
+        //$display("@verilog: %m debug:");
+        //$display("@verilog: state: %d stall: %d", state, busy);
         //$display("@verilog decoder debug: %d", $time);
         //$display("@verilog: state: %d", state);
         //$display("@verilog: rst: %d", rst);
