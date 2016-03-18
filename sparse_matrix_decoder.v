@@ -352,31 +352,32 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                 end
             endcase
         end
-    if(state[2]) begin //TODO: semantics
-        //next_debug_registers[DEBUG_REGISTERS_START] = 0; //flags
-        //TODO: count times mac stalls
-        next_debug_registers[DEBUG_REGISTERS_START + 1] = debug_register_1 + 1;
-        if(memory_response_fifo_0_empty)
-            next_debug_registers[DEBUG_REGISTERS_START + 2] = debug_register_2 + 1;
-        if(memory_response_fifo_1_empty)
-            next_debug_registers[DEBUG_REGISTERS_START + 3] = debug_register_3 + 1;
-        if(memory_response_fifo_2_empty)
-            next_debug_registers[DEBUG_REGISTERS_START + 4] = debug_register_4 + 1;
-        if(memory_response_fifo_3_empty)
-            next_debug_registers[DEBUG_REGISTERS_START + 5] = debug_register_5 + 1;
-        if(fzip_is_common_fifo_almost_full)
-            next_debug_registers[DEBUG_REGISTERS_START + 6] = debug_register_6 + 1;
-        if(fzip_not_common_fifo_almost_full)
-            next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
-        if(fzip_not_common_fifo_almost_full)
-            next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
-        if(fzip_req_common_fifo_almost_full)
-            next_debug_registers[DEBUG_REGISTERS_START] = debug_register_0 + 1;
+        if(state[2]) begin //TODO: semantics
+            //next_debug_registers[DEBUG_REGISTERS_START] = 0; //flags
+            //TODO: count times mac stalls
+            next_debug_registers[DEBUG_REGISTERS_START + 1] = debug_register_1 + 1;
+            if(memory_response_fifo_0_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 2] = debug_register_2 + 1;
+            if(memory_response_fifo_1_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 3] = debug_register_3 + 1;
+            if(memory_response_fifo_2_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 4] = debug_register_4 + 1;
+            if(memory_response_fifo_3_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 5] = debug_register_5 + 1;
+            if(fzip_is_common_fifo_almost_full)
+                next_debug_registers[DEBUG_REGISTERS_START + 6] = debug_register_6 + 1;
+            if(fzip_not_common_fifo_almost_full)
+                next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
+            if(fzip_not_common_fifo_almost_full)
+                next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
+            if(fzip_req_common_fifo_almost_full)
+                next_debug_registers[DEBUG_REGISTERS_START] = debug_register_0 + 1;
 
-    end
-    if(rst) begin
-        for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1) begin
-            next_debug_registers[i] = 0;
+        end
+        if(rst) begin
+            for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1) begin
+                next_debug_registers[i] = 0;
+            end
         end
     end
     reg memory_response_fifo_pop;
@@ -593,20 +594,20 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     end
     always @(posedge clk) begin
         if(spm_stage_0) begin
-            $display("spm_stage_0: %d", stage_0_count);
-            $display("buffer: %B", spm_stream_decoder.ad.vld.buffer);
-            $display("buffer_end: %d", spm_stream_decoder.ad.vld.buffer_end);
+            //$display("spm_stage_0: %d", stage_0_count);
+            //$display("buffer: %B", spm_stream_decoder.ad.vld.buffer);
+            //$display("buffer_end: %d", spm_stream_decoder.ad.vld.buffer_end);
             stage_0_count = stage_0_count + 1;
         end
         if(spm_stage_1) begin
-            $display("spm_stage_1: %d", stage_1_count);
-            $display("spm_stream_decoder_q: %B %d", spm_stream_decoder_q[1:0], spm_stream_decoder_q[6:2]);
+            //$display("spm_stage_1: %d", stage_1_count);
+            //$display("spm_stream_decoder_q: %B %d", spm_stream_decoder_q[1:0], spm_stream_decoder_q[6:2]);
             //$display("buffer_end: %d", spm_stream_decoder.ad.vld.buffer_end);
             stage_1_count = stage_1_count + 1;
         end
         if(spm_stage_2) begin
-            $display("spm_stage_2: %d", stage_2_count);
-            $display("buffer_end: %d", spm_argument_decoder.vld.buffer_end);
+            //$display("spm_stage_2: %d", stage_2_count);
+            //$display("buffer_end: %d", spm_argument_decoder.vld.buffer_end);
             stage_2_count = stage_2_count + 1;
         end
     end
