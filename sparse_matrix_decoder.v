@@ -168,6 +168,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
 
     wire fzip_is_common_fifo_almost_full;
     wire fzip_not_common_fifo_almost_full;
+    wire fzip_req_common_fifo_almost_full;
 
     always @* begin
         next_req_mem_ld = 0;
@@ -349,7 +350,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
             endcase
         end
     if(state[2]) begin //TODO: semantics
-        next_debug_registers[DEBUG_REGISTERS_START] = 0; //flags
+        //next_debug_registers[DEBUG_REGISTERS_START] = 0; //flags
         //TODO: count times mac stalls
         next_debug_registers[DEBUG_REGISTERS_START + 1] = debug_register_1 + 1;
         if(memory_response_fifo_0_empty)
@@ -364,6 +365,10 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
             next_debug_registers[DEBUG_REGISTERS_START + 6] = debug_register_6 + 1;
         if(fzip_not_common_fifo_almost_full)
             next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
+        if(fzip_not_common_fifo_almost_full)
+            next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
+        if(fzip_req_common_fifo_almost_full)
+            next_debug_registers[DEBUG_REGISTERS_START] = debug_register_0 + 1;
 
     end
     if(rst) begin
@@ -676,7 +681,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     always @(posedge clk)
         fzip_argument_decoder_go_ahead <= !fzip_argument_decoder_almost_empty || (strain_counter[2] && fzip_argument_decoder_ready);
 
-    wire fzip_req_common_fifo_almost_full;
     wire fzip_stage_0 = fzip_stream_decoder_ready & fzip_argument_decoder_go_ahead & !fzip_is_common_fifo_almost_full & !fzip_not_common_fifo_almost_full & !fzip_req_common_fifo_almost_full;
     integer fzip_stage_0_count;
     initial fzip_stage_0_count = 0;
@@ -755,14 +759,14 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     wire fzip_is_common_fifo_q;
     wire fzip_is_common_fifo_full;
     wire fzip_is_common_fifo_empty;
-    std_fifo #(.WIDTH(1), .DEPTH(128), .LATENCY(0), .ALMOST_FULL_COUNT(3)) fzip_is_common_fifo(rst, clk, fzip_stage_3, fzip_is_common_fifo_pop, fzip_is_common_stage_3, fzip_is_common_fifo_q, fzip_is_common_fifo_full, fzip_is_common_fifo_empty, , , fzip_is_common_fifo_almost_full);
+    std_fifo #(.WIDTH(1), .DEPTH(512), .LATENCY(0), .ALMOST_FULL_COUNT(3)) fzip_is_common_fifo(rst, clk, fzip_stage_3, fzip_is_common_fifo_pop, fzip_is_common_stage_3, fzip_is_common_fifo_q, fzip_is_common_fifo_full, fzip_is_common_fifo_empty, , , fzip_is_common_fifo_almost_full);
 
     //TODO: value fifo
     reg fzip_not_common_fifo_pop;
     wire [63:0] fzip_not_common_fifo_q;
     wire fzip_not_common_fifo_full;
     wire fzip_not_common_fifo_empty;
-    std_fifo #(.WIDTH(64), .DEPTH(64), .ALMOST_FULL_COUNT(3)) fzip_not_common_fifo(rst, clk, fzip_stage_3 && !fzip_is_common_stage_3, fzip_not_common_fifo_pop, fzip_value_stage_3, fzip_not_common_fifo_q, fzip_not_common_fifo_full, fzip_not_common_fifo_empty, , , fzip_not_common_fifo_almost_full);
+    std_fifo #(.WIDTH(64), .DEPTH(512), .ALMOST_FULL_COUNT(3)) fzip_not_common_fifo(rst, clk, fzip_stage_3 && !fzip_is_common_stage_3, fzip_not_common_fifo_pop, fzip_value_stage_3, fzip_not_common_fifo_q, fzip_not_common_fifo_full, fzip_not_common_fifo_empty, , , fzip_not_common_fifo_almost_full);
 
     reg fzip_req_common_fifo_push, fzip_req_common_fifo_pop;
     wire fzip_req_common_fifo_full, fzip_req_common_fifo_empty;
