@@ -668,7 +668,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     end
 
     always @(posedge clk) begin
-        rsp_mem_stall <= |{memory_response_fifo_0_almost_full, memory_response_fifo_1_almost_full, memory_response_fifo_2_almost_full, memory_response_fifo_3_almost_full};
+        rsp_mem_stall <= 0; //|{memory_response_fifo_0_almost_full, memory_response_fifo_1_almost_full, memory_response_fifo_2_almost_full, memory_response_fifo_3_almost_full};
         if(rsp_mem_stall) begin
             $display("@verilog: rsp_mem_stall high at %m at time %d", $time);
             $display("@verilog: total: %d", tracker.total);
