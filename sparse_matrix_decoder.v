@@ -387,8 +387,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
         memory_response_fifo_pop_tag_delay <= memory_response_fifo_pop_tag;
     end
     localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
-    //localparam MIN_IN_FLIGHT = 500;
-    localparam MIN_IN_FLIGHT = 256;
+    localparam MIN_IN_FLIGHT = 500;
+    //localparam MIN_IN_FLIGHT = 256;
     in_flight_tracker #(4, MIN_IN_FLIGHT, MIN_IN_FLIGHT * 4) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop_delay, memory_response_fifo_pop_tag_delay, next_req_mem_tag, in_flight_not_full);
     //in_flight_tracker #(4, MIN_IN_FLIGHT, MIN_IN_FLIGHT * 4, INITIAL_RESPONSE_FIFO_DEPTH) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop_delay, memory_response_fifo_pop_tag_delay, next_req_mem_tag, in_flight_not_full);
 
