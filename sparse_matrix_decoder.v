@@ -391,7 +391,9 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
 
     //spm decoders
     reg spm_stream_decoder_push;
-    wire [2 + 5 - 1:0] spm_stream_decoder_q;
+    localparam SPM_TYPE_CODE_WIDTH = 2;
+    localparam SPM_DELTA_CODE_WIDTH = 6;
+    wire [SPM_DELTA_CODE_WIDTH + SPM_TYPE_CODE_WIDTH - 1:0] spm_stream_decoder_q;
     wire spm_stream_decoder_full;
     wire spm_stream_decoder_ready;
     reg spm_stream_decoder_pop;
@@ -401,27 +403,27 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg [SPM_MAX_CODE_LENGTH - 1:0] spm_stream_decoder_table_addr;
     //localparam LOG2_LOG2_SPM_TABLE_DEPTH = 3;
     reg [LOG2_SPM_MAX_CODE_LENGTH - 1:0] spm_stream_decoder_table_code_width;
-    reg [2 + 5 - 1:0] spm_stream_decoder_table_data;
+    reg [SPM_DELTA_CODE_WIDTH + SPM_TYPE_CODE_WIDTH - 1:0] spm_stream_decoder_table_data;
     wire spm_stream_decoder_almost_full;
-    stream_decoder #(.WIDTH_IN(64), .WIDTH_OUT(7), .MAX_CODE_LENGTH(SPM_MAX_CODE_LENGTH), .INTERMEDIATE_WIDTH(16), .ALMOST_FULL_COUNT(4)) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data, spm_stream_decoder_almost_full);
+    stream_decoder #(.WIDTH_IN(64), .WIDTH_OUT(SPM_TYPE_CODE_WIDTH + SPM_DELTA_CODE_WIDTH), .MAX_CODE_LENGTH(SPM_MAX_CODE_LENGTH), .INTERMEDIATE_WIDTH(16), .ALMOST_FULL_COUNT(4)) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data, spm_stream_decoder_almost_full);
 
     always @* begin
         spm_stream_decoder_table_push = 0;
         spm_stream_decoder_table_addr = register_5 / 8;
         spm_stream_decoder_table_code_width = rsp_mem_q[LOG2_SPM_MAX_CODE_LENGTH - 1:0];
-        spm_stream_decoder_table_data = rsp_mem_q[5 + 2 + LOG2_SPM_MAX_CODE_LENGTH - 1 -: 5 + 2];
+        spm_stream_decoder_table_data = rsp_mem_q[SPM_DELTA_CODE_WIDTH + SPM_TYPE_CODE_WIDTH + LOG2_SPM_MAX_CODE_LENGTH - 1 -: SPM_DELTA_CODE_WIDTH + SPM_TYPE_CODE_WIDTH];
         if(state == LD_DELTA_CODES && rsp_mem_push)
             spm_stream_decoder_table_push = 1;
     end
 
     reg spm_argument_decoder_push;
-    wire [30:0] spm_argument_decoder_q;
+    wire [62:0] spm_argument_decoder_q;
     wire spm_argument_decoder_full;
     wire spm_argument_decoder_ready;
-    reg [4:0] spm_argument_decoder_pop;
+    reg [SPM_DELTA_CODE_WIDTH - 1:0] spm_argument_decoder_pop;
     wire spm_argument_decoder_almost_empty;
     wire spm_argument_decoder_almost_full;
-    argument_decoder #(.WIDTH_OUT(31), .WIDTH_IN(64), .INTERMEDIATE_WIDTH(32), .ALMOST_FULL_COUNT(4)) spm_argument_decoder(clk, rst, spm_argument_decoder_push, memory_response_fifo_1_q, spm_argument_decoder_q, spm_argument_decoder_full, spm_argument_decoder_half_full, spm_argument_decoder_ready, spm_argument_decoder_pop, spm_argument_decoder_almost_empty, spm_argument_decoder_almost_full);
+    argument_decoder #(.WIDTH_OUT(63), .WIDTH_IN(64), .INTERMEDIATE_WIDTH(64), .ALMOST_FULL_COUNT(4)) spm_argument_decoder(clk, rst, spm_argument_decoder_push, memory_response_fifo_1_q, spm_argument_decoder_q, spm_argument_decoder_full, spm_argument_decoder_half_full, spm_argument_decoder_ready, spm_argument_decoder_pop, spm_argument_decoder_almost_empty, spm_argument_decoder_almost_full);
     reg [2:0] strain_counter;
     initial strain_counter = 0;
     reg spm_argument_decoder_go_ahead;
@@ -441,17 +443,17 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     always @(posedge clk) begin
         spm_stage_1 <= spm_stage_0;
     end
-    wire [1:0] spm_stream_decoder_code_stage_1 = spm_stream_decoder_q[1:0];
+    wire [SPM_TYPE_CODE_WIDTH - 1:0] spm_stream_decoder_code_stage_1 = spm_stream_decoder_q[SPM_TYPE_CODE_WIDTH - 1:0];
     localparam SPM_CODE_NEWLINE = 0;
     localparam SPM_CODE_CONTSTANT = 1;
     localparam SPM_CODE_RANGE = 2;
-    wire [4:0] spm_stream_decoder_delta_stage_1 = spm_stream_decoder_q[6:2];
-    reg [4:0] spm_argument_pop_stage_2;
+    wire [SPM_DELTA_CODE_WIDTH - 1:0] spm_stream_decoder_delta_stage_1 = spm_stream_decoder_q[SPM_DELTA_CODE_WIDTH + SPM_TYPE_CODE_WIDTH - 1:SPM_TYPE_CODE_WIDTH];
+    reg [SPM_DELTA_CODE_WIDTH - 1:0] spm_argument_pop_stage_2;
     reg spm_stage_2;
-    reg [4:0] spm_delta_stage_2;
-    reg [1:0] spm_code_stage_2;
-    reg [31:0] spm_mask_stage_2;
-    reg [31:0] spm_first_bit_stage_2;
+    reg [SPM_DELTA_CODE_WIDTH - 1:0] spm_delta_stage_2;
+    reg [SPM_TYPE_CODE_WIDTH - 1:0] spm_code_stage_2;
+    reg [63:0] spm_mask_stage_2;
+    reg [63:0] spm_first_bit_stage_2;
     always @(posedge clk) begin
         spm_argument_pop_stage_2 <= 0;
         if(spm_stage_1 && spm_stream_decoder_code_stage_1[1])
@@ -459,14 +461,14 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
         spm_stage_2 <= spm_stage_1;
         spm_delta_stage_2 <= spm_stream_decoder_delta_stage_1;
         spm_code_stage_2 <= spm_stream_decoder_code_stage_1;
-        spm_mask_stage_2 <= 32'HFFFFFFFF >> (32 - spm_stream_decoder_delta_stage_1);
-        spm_first_bit_stage_2 <= 32'H1 << spm_stream_decoder_delta_stage_1;
+        spm_mask_stage_2 <= 64'HFFFFFFFFFFFFFFFF >> (64 - spm_stream_decoder_delta_stage_1);
+        spm_first_bit_stage_2 <= 64'H1 << spm_stream_decoder_delta_stage_1;
     end
     always @*
         spm_argument_decoder_pop = spm_argument_pop_stage_2;
 
     reg spm_stage_3;
-    reg [31:0] spm_delta_stage_3;
+    reg [63:0] spm_delta_stage_3;
     reg spm_code_stage_3;
     always @(posedge clk) begin
         spm_stage_3 <= spm_stage_2;
@@ -476,6 +478,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
         spm_code_stage_3 <= spm_code_stage_2[0] || spm_code_stage_2[1];
     end
 
+    //TODO: support larger indexes
     reg [31:0] spm_row_stage_4;
     reg [31:0] spm_col_stage_4;
     reg [LOG2_SUB_HEIGHT:0] next_lsb_row;
