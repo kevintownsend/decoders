@@ -47,7 +47,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
         registers[i] = 0;
 
     localparam DEBUG_REGISTERS_START = 22;
-    localparam DEBUG_REGISTERS_END = 30;
+    localparam DEBUG_REGISTERS_END = DEBUG_REGISTERS_START + 8;
     reg [47:0] debug_registers[DEBUG_REGISTERS_START:DEBUG_REGISTERS_END - 1];
     reg [47:0] next_debug_registers[DEBUG_REGISTERS_START:DEBUG_REGISTERS_END - 1];
     initial for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1)
@@ -72,13 +72,18 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
 
     wire steady_state = (state == STEADY_1) || (state == STEADY_2) || (state == STEADY_3) || (state == STEADY_4);
 
-    reg all_eq, rst, next_rst;
+    reg all_eq;
+    reg rst, rst_1, rst_2, next_rst;
     initial rst = 1;
     always @(posedge clk) begin
         all_eq <= r2_eq_r6 & r3_eq_r7 & r4_eq_r8 & r5_eq_r9 & registers[REGISTERS_START + 8][47] & registers[REGISTERS_START + 9][47];
-        rst <= next_rst;
+        rst_1 <= next_rst;
+        rst_2 <= rst_1;
+        rst <= rst_2;
         for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
             registers[i] <= next_registers[i];
+        for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1)
+            debug_registers[i] <= next_debug_registers[i];
         state <= next_state;
         if(rst) begin
             $display("@verilog: sparse_matrix_decoder reset");
@@ -145,9 +150,29 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     wire [47:0] register_11 = registers[11];
     wire [47:0] register_12 = registers[12];
     wire [47:0] register_13 = registers[13];
+
+    wire [47:0] debug_register_0 = debug_registers[DEBUG_REGISTERS_START];
+    wire [47:0] debug_register_1 = debug_registers[DEBUG_REGISTERS_START + 1];
+    wire [47:0] debug_register_2 = debug_registers[DEBUG_REGISTERS_START + 2];
+    wire [47:0] debug_register_3 = debug_registers[DEBUG_REGISTERS_START + 3];
+    wire [47:0] debug_register_4 = debug_registers[DEBUG_REGISTERS_START + 4];
+    wire [47:0] debug_register_5 = debug_registers[DEBUG_REGISTERS_START + 5];
+    wire [47:0] debug_register_6 = debug_registers[DEBUG_REGISTERS_START + 6];
+    wire [47:0] debug_register_7 = debug_registers[DEBUG_REGISTERS_START + 7];
+
     reg [0:3] memory_response_not_starving;
     wire in_flight_not_full;
     reg [0:3] input_fifos_half_full;
+
+    wire memory_response_fifo_0_empty;
+    wire memory_response_fifo_1_empty;
+    wire memory_response_fifo_2_empty;
+    wire memory_response_fifo_3_empty;
+
+    wire fzip_is_common_fifo_almost_full;
+    wire fzip_not_common_fifo_almost_full;
+    wire fzip_req_common_fifo_almost_full;
+
     always @* begin
         next_req_mem_ld = 0;
         next_req_mem_addr = register_4;
@@ -168,6 +193,15 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
         next_registers[REGISTERS_START + 7] = register_11;
         next_registers[REGISTERS_START + 8] = register_12;
         next_registers[REGISTERS_START + 9] = register_13;
+
+        next_debug_registers[DEBUG_REGISTERS_START] = debug_register_0;
+        next_debug_registers[DEBUG_REGISTERS_START + 1] = debug_register_1;
+        next_debug_registers[DEBUG_REGISTERS_START + 2] = debug_register_2;
+        next_debug_registers[DEBUG_REGISTERS_START + 3] = debug_register_3;
+        next_debug_registers[DEBUG_REGISTERS_START + 4] = debug_register_4;
+        next_debug_registers[DEBUG_REGISTERS_START + 5] = debug_register_5;
+        next_debug_registers[DEBUG_REGISTERS_START + 6] = debug_register_6;
+        next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7;
         case(state)
             IDLE:
                 busy = 0;
@@ -298,6 +332,9 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                     for(i = REGISTERS_START; i < REGISTERS_END; i = i + 1)
                         if(i == op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
                             next_registers[i] = op_r[63:OPCODE_ARG_2];
+                    for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1)
+                        if(i == op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1])
+                            next_debug_registers[i] = op_r[63:OPCODE_ARG_2];
                 end
                 OP_READ: begin
                     if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < REGISTERS_END) begin
@@ -306,8 +343,41 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                         next_op_out[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1];
                         next_op_out[63:OPCODE_ARG_2] = registers[op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1]];
                     end
+                    if(op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] >= DEBUG_REGISTERS_START && op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1] < DEBUG_REGISTERS_END) begin
+                        next_op_out[OPCODE_ARG_PE - 1:0] = OP_RETURN;
+                        next_op_out[OPCODE_ARG_1 - 1:OPCODE_ARG_PE] = ID;
+                        next_op_out[OPCODE_ARG_2 - 1:OPCODE_ARG_1] = op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1];
+                        next_op_out[63:OPCODE_ARG_2] = debug_registers[op_r[OPCODE_ARG_2 - 1:OPCODE_ARG_1]];
+                    end
                 end
             endcase
+        end
+        if(state[2]) begin //TODO: semantics
+            //next_debug_registers[DEBUG_REGISTERS_START] = 0; //flags
+            //TODO: count times mac stalls
+            next_debug_registers[DEBUG_REGISTERS_START + 1] = debug_register_1 + 1;
+            if(memory_response_fifo_0_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 2] = debug_register_2 + 1;
+            if(memory_response_fifo_1_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 3] = debug_register_3 + 1;
+            if(memory_response_fifo_2_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 4] = debug_register_4 + 1;
+            if(memory_response_fifo_3_empty)
+                next_debug_registers[DEBUG_REGISTERS_START + 5] = debug_register_5 + 1;
+            if(fzip_is_common_fifo_almost_full)
+                next_debug_registers[DEBUG_REGISTERS_START + 6] = debug_register_6 + 1;
+            if(fzip_not_common_fifo_almost_full)
+                next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
+            if(fzip_not_common_fifo_almost_full)
+                next_debug_registers[DEBUG_REGISTERS_START + 7] = debug_register_7 + 1;
+            if(fzip_req_common_fifo_almost_full)
+                next_debug_registers[DEBUG_REGISTERS_START] = debug_register_0 + 1;
+
+        end
+        if(rst) begin
+            for(i = DEBUG_REGISTERS_START; i < DEBUG_REGISTERS_END; i = i + 1) begin
+                next_debug_registers[i] = 0;
+            end
         end
     end
     reg memory_response_fifo_pop;
@@ -320,8 +390,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
         memory_response_fifo_pop_tag_delay <= memory_response_fifo_pop_tag;
     end
     localparam INITIAL_RESPONSE_FIFO_DEPTH = 512;
-    //localparam MIN_IN_FLIGHT = 500;
-    localparam MIN_IN_FLIGHT = 256;
+    localparam MIN_IN_FLIGHT = 500;
+    //localparam MIN_IN_FLIGHT = 256;
     in_flight_tracker #(4, MIN_IN_FLIGHT, MIN_IN_FLIGHT * 4) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop_delay, memory_response_fifo_pop_tag_delay, next_req_mem_tag, in_flight_not_full);
     //in_flight_tracker #(4, MIN_IN_FLIGHT, MIN_IN_FLIGHT * 4, INITIAL_RESPONSE_FIFO_DEPTH) tracker(clk, req_mem_ld && steady_state, req_mem_tag, memory_response_fifo_pop_delay, memory_response_fifo_pop_tag_delay, next_req_mem_tag, in_flight_not_full);
 
@@ -330,7 +400,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg memory_response_fifo_0_pop;
     wire [63:0] memory_response_fifo_0_q;
     wire memory_response_fifo_0_full;
-    wire memory_response_fifo_0_empty;
     wire memory_response_fifo_0_almost_empty;
     wire memory_response_fifo_0_almost_full;
     std_fifo #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_0(rst, clk, memory_response_fifo_push && rsp_mem_tag == 0, memory_response_fifo_0_pop, rsp_mem_q, memory_response_fifo_0_q, memory_respones_fifo_0_full, memory_response_fifo_0_empty, , memory_response_fifo_0_almost_empty, memory_response_fifo_0_almost_full);
@@ -338,7 +407,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg memory_response_fifo_1_pop;
     wire [63:0] memory_response_fifo_1_q;
     wire memory_response_fifo_1_full;
-    wire memory_response_fifo_1_empty;
     wire memory_response_fifo_1_almost_empty;
     wire memory_response_fifo_1_almost_full;
     std_fifo #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_1(rst, clk, memory_response_fifo_push && rsp_mem_tag == 1, memory_response_fifo_1_pop, rsp_mem_q, memory_response_fifo_1_q, memory_respones_fifo_1_full, memory_response_fifo_1_empty, , memory_response_fifo_1_almost_empty, memory_response_fifo_1_almost_full);
@@ -346,7 +414,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg memory_response_fifo_2_pop;
     wire [63:0] memory_response_fifo_2_q;
     wire memory_response_fifo_2_full;
-    wire memory_response_fifo_2_empty;
     wire memory_response_fifo_2_almost_empty;
     wire memory_response_fifo_2_almost_full;
     std_fifo  #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_2(rst, clk, memory_response_fifo_push && rsp_mem_tag == 2, memory_response_fifo_2_pop, rsp_mem_q, memory_response_fifo_2_q, memory_respones_fifo_2_full, memory_response_fifo_2_empty, , memory_response_fifo_2_almost_empty, memory_response_fifo_2_almost_full);
@@ -354,7 +421,6 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg memory_response_fifo_3_pop;
     wire [63:0] memory_response_fifo_3_q;
     wire memory_response_fifo_3_full;
-    wire memory_response_fifo_3_empty;
     wire memory_response_fifo_3_almost_empty;
     wire memory_response_fifo_3_almost_full;
     std_fifo  #(.WIDTH(64), .DEPTH(INITIAL_RESPONSE_FIFO_DEPTH), .ALMOST_FULL_COUNT(8), .ALMOST_EMPTY_COUNT(32)) initial_response_fifo_3(rst, clk, memory_response_fifo_push && rsp_mem_tag == 3, memory_response_fifo_3_pop, rsp_mem_q, memory_response_fifo_3_q, memory_respones_fifo_3_full, memory_response_fifo_3_empty, , memory_response_fifo_3_almost_empty, memory_response_fifo_3_almost_full);
@@ -405,7 +471,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     reg [LOG2_SPM_MAX_CODE_LENGTH - 1:0] spm_stream_decoder_table_code_width;
     reg [SPM_DELTA_CODE_WIDTH + SPM_TYPE_CODE_WIDTH - 1:0] spm_stream_decoder_table_data;
     wire spm_stream_decoder_almost_full;
-    stream_decoder #(.WIDTH_IN(64), .WIDTH_OUT(SPM_TYPE_CODE_WIDTH + SPM_DELTA_CODE_WIDTH), .MAX_CODE_LENGTH(SPM_MAX_CODE_LENGTH), .INTERMEDIATE_WIDTH(16), .ALMOST_FULL_COUNT(4)) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data, spm_stream_decoder_almost_full);
+    stream_decoder #(.WIDTH_IN(64), .WIDTH_OUT(SPM_TYPE_CODE_WIDTH + SPM_DELTA_CODE_WIDTH), .MAX_CODE_LENGTH(SPM_MAX_CODE_LENGTH), .INTERMEDIATE_WIDTH(8), .ALMOST_FULL_COUNT(4)) spm_stream_decoder(clk, rst, spm_stream_decoder_push, memory_response_fifo_0_q, spm_stream_decoder_q, spm_stream_decoder_full, spm_stream_decoder_half_full, spm_stream_decoder_ready, spm_stream_decoder_pop, spm_stream_decoder_table_push, spm_stream_decoder_table_addr, spm_stream_decoder_table_code_width, spm_stream_decoder_table_data, spm_stream_decoder_almost_full);
 
     always @* begin
         spm_stream_decoder_table_push = 0;
@@ -531,20 +597,20 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     end
     always @(posedge clk) begin
         if(spm_stage_0) begin
-            $display("spm_stage_0: %d", stage_0_count);
-            $display("buffer: %B", spm_stream_decoder.ad.vld.buffer);
-            $display("buffer_end: %d", spm_stream_decoder.ad.vld.buffer_end);
+            //$display("spm_stage_0: %d", stage_0_count);
+            //$display("buffer: %B", spm_stream_decoder.ad.vld.buffer);
+            //$display("buffer_end: %d", spm_stream_decoder.ad.vld.buffer_end);
             stage_0_count = stage_0_count + 1;
         end
         if(spm_stage_1) begin
-            $display("spm_stage_1: %d", stage_1_count);
-            $display("spm_stream_decoder_q: %B %d", spm_stream_decoder_q[1:0], spm_stream_decoder_q[6:2]);
+            //$display("spm_stage_1: %d", stage_1_count);
+            //$display("spm_stream_decoder_q: %B %d", spm_stream_decoder_q[1:0], spm_stream_decoder_q[6:2]);
             //$display("buffer_end: %d", spm_stream_decoder.ad.vld.buffer_end);
             stage_1_count = stage_1_count + 1;
         end
         if(spm_stage_2) begin
-            $display("spm_stage_2: %d", stage_2_count);
-            $display("buffer_end: %d", spm_argument_decoder.vld.buffer_end);
+            //$display("spm_stage_2: %d", stage_2_count);
+            //$display("buffer_end: %d", spm_argument_decoder.vld.buffer_end);
             stage_2_count = stage_2_count + 1;
         end
     end
@@ -592,6 +658,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     //common codes
 
     reg [63:0] fzip_value_stage_3;
+    wire [12:0] fzip_req_common_fifo_q;
     always @* begin
         req_scratch_st = 0;
         req_scratch_addr = register_5 / 8;
@@ -600,11 +667,11 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
             req_scratch_st = 1;
         end
         if(req_scratch_ld)
-            req_scratch_addr = fzip_value_stage_3[12:0];
+            req_scratch_addr = fzip_req_common_fifo_q;
     end
 
     always @(posedge clk) begin
-        rsp_mem_stall <= |{memory_response_fifo_0_almost_full, memory_response_fifo_1_almost_full, memory_response_fifo_2_almost_full, memory_response_fifo_3_almost_full};
+        rsp_mem_stall <= 0; //|{memory_response_fifo_0_almost_full, memory_response_fifo_1_almost_full, memory_response_fifo_2_almost_full, memory_response_fifo_3_almost_full};
         if(rsp_mem_stall) begin
             $display("@verilog: rsp_mem_stall high at %m at time %d", $time);
             $display("@verilog: total: %d", tracker.total);
@@ -620,9 +687,7 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     always @(posedge clk)
         fzip_argument_decoder_go_ahead <= !fzip_argument_decoder_almost_empty || (strain_counter[2] && fzip_argument_decoder_ready);
 
-    wire fzip_is_common_fifo_almost_full;
-    wire fzip_not_common_fifo_almost_full;
-    wire fzip_stage_0 = fzip_stream_decoder_ready & fzip_argument_decoder_go_ahead & !fzip_is_common_fifo_almost_full & !fzip_not_common_fifo_almost_full;
+    wire fzip_stage_0 = fzip_stream_decoder_ready & fzip_argument_decoder_go_ahead & !fzip_is_common_fifo_almost_full & !fzip_not_common_fifo_almost_full & !fzip_req_common_fifo_almost_full;
     integer fzip_stage_0_count;
     initial fzip_stage_0_count = 0;
     integer fzip_stage_1_count;
@@ -695,29 +760,37 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
     end
     */
 
-    //TODO: bit fifo
+    //bit fifo
     reg fzip_is_common_fifo_pop;
     wire fzip_is_common_fifo_q;
     wire fzip_is_common_fifo_full;
     wire fzip_is_common_fifo_empty;
-    std_fifo #(.WIDTH(1), .DEPTH(64), .LATENCY(0), .ALMOST_FULL_COUNT(3)) fzip_is_common_fifo(rst, clk, fzip_stage_3, fzip_is_common_fifo_pop, fzip_is_common_stage_3, fzip_is_common_fifo_q, fzip_is_common_fifo_full, fzip_is_common_fifo_empty, , , fzip_is_common_fifo_almost_full);
+    std_fifo #(.WIDTH(1), .DEPTH(512), .LATENCY(0), .ALMOST_FULL_COUNT(3)) fzip_is_common_fifo(rst, clk, fzip_stage_3, fzip_is_common_fifo_pop, fzip_is_common_stage_3, fzip_is_common_fifo_q, fzip_is_common_fifo_full, fzip_is_common_fifo_empty, , , fzip_is_common_fifo_almost_full);
 
-    //TODO: value fifo
+    //value fifo
     reg fzip_not_common_fifo_pop;
     wire [63:0] fzip_not_common_fifo_q;
     wire fzip_not_common_fifo_full;
     wire fzip_not_common_fifo_empty;
-    std_fifo #(.WIDTH(64), .DEPTH(32), .ALMOST_FULL_COUNT(3)) fzip_not_common_fifo(rst, clk, fzip_stage_3 && !fzip_is_common_stage_3, fzip_not_common_fifo_pop, fzip_value_stage_3, fzip_not_common_fifo_q, fzip_not_common_fifo_full, fzip_not_common_fifo_empty, , , fzip_not_common_fifo_almost_full);
+    std_fifo #(.WIDTH(64), .DEPTH(512), .ALMOST_FULL_COUNT(3)) fzip_not_common_fifo(rst, clk, fzip_stage_3 && !fzip_is_common_stage_3, fzip_not_common_fifo_pop, fzip_value_stage_3, fzip_not_common_fifo_q, fzip_not_common_fifo_full, fzip_not_common_fifo_empty, , , fzip_not_common_fifo_almost_full);
 
+    reg fzip_req_common_fifo_push, fzip_req_common_fifo_pop;
+    wire fzip_req_common_fifo_full, fzip_req_common_fifo_empty;
     always @* begin
-        req_scratch_ld = fzip_stage_3 && fzip_is_common_stage_3;
+        fzip_req_common_fifo_push = fzip_stage_3 && fzip_is_common_stage_3;
+        fzip_req_common_fifo_pop = !fzip_req_common_fifo_empty && !req_scratch_stall;
     end
+    std_fifo #(.WIDTH(13), .DEPTH(32), .LATENCY(0), .ALMOST_FULL_COUNT(3)) fzip_req_common_fifo(rst, clk, fzip_req_common_fifo_push, fzip_req_common_fifo_pop, fzip_value_stage_3[12:0], fzip_req_common_fifo_q, fzip_req_common_fifo_full, fzip_req_common_fifo_empty, , , fzip_req_common_fifo_almost_full);
+    always @* begin
+        req_scratch_ld = fzip_req_common_fifo_pop;
+    end
+
 
     reg fzip_common_fifo_pop;
     wire [63:0] fzip_common_fifo_q;
     wire fzip_common_fifo_full;
     wire fzip_common_fifo_empty;
-    std_fifo #(64, 64) fzip_common_fifo(rst, clk, rsp_scratch_push, fzip_common_fifo_pop, rsp_scratch_q, fzip_common_fifo_q, fzip_common_fifo_full, fzip_common_fifo_empty, , , rsp_scratch_stall);
+    std_fifo #(64, 32) fzip_common_fifo(rst, clk, rsp_scratch_push, fzip_common_fifo_pop, rsp_scratch_q, fzip_common_fifo_q, fzip_common_fifo_full, fzip_common_fifo_empty, , , rsp_scratch_stall);
 
     //stage_4
     reg fzip_common_stage_4;
@@ -863,8 +936,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
             if(input_fifos_half_full[i])
                 half_full_count[i] = half_full_count[i] + 1;
         end
-        $display("@verilog: %m debug:");
-        $display("@verilog: state: %d stall: %d", state, busy);
+        //$display("@verilog: %m debug:");
+        //$display("@verilog: state: %d stall: %d", state, busy);
         //$display("@verilog decoder debug: %d", $time);
         //$display("@verilog: state: %d", state);
         //$display("@verilog: rst: %d", rst);

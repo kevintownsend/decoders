@@ -20,7 +20,7 @@ module in_flight_tracker(clk, push, push_tag, pop, pop_tag, ready_tag, ready);
         push_count[i] = 0;
         pop_count[i] = 0;
     end
-    reg [LOG2_MAX_DEPTH - 1:0] total;
+    reg [LOG2_MAX_DEPTH:0] total;
     initial total = 0;
     always @(posedge clk) begin
         if(push)
@@ -48,10 +48,11 @@ module in_flight_tracker(clk, push, push_tag, pop, pop_tag, ready_tag, ready);
     end
     reg [LOG2_MAX_DEPTH - 1:0] count_stage_2;
     always @(posedge clk) count_stage_2 <= push_count_r_stage_1 - pop_count_r_stage_1;
-    reg count_is_small_stage_3, total_is_small_stage_3;
+    reg count_is_small_stage_3, total_is_small_stage_3, total_is_large_stage_3;
     always @(posedge clk) begin
         count_is_small_stage_3 <= count_stage_2 < MIN_DEPTH;
         total_is_small_stage_3 <= total < HEAD_ROOM;
+        total_is_large_stage_3 <= total > MAX_DEPTH - COLORS - 6;
     end
     reg ready_stage_4;
     reg [LOG2_COLORS - 1:0] counter_stage_4;
@@ -62,10 +63,6 @@ module in_flight_tracker(clk, push, push_tag, pop, pop_tag, ready_tag, ready);
     assign ready = ready_array[ready_tag];
     // synthesis off
     always @(posedge clk) begin
-        if(total == MAX_DEPTH - 1) begin
-            $display("@verilog: ERROR overflow %m");
-            $finish;
-        end
     end
     // synthesis on
 
