@@ -248,7 +248,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                     next_registers[REGISTERS_START] = r2_plus_8;
                     next_req_mem_ld = 1;
                 end
-                if(recurring_timer || !in_flight_not_full || r2_eq_r6 || input_fifos_half_full[0])
+                //if(recurring_timer || !in_flight_not_full || r2_eq_r6 || input_fifos_half_full[0])
+                if(!in_flight_not_full || r2_eq_r6)
                     next_state = STEADY_2;
                 if(all_eq) begin
                     next_state = IDLE;
@@ -261,7 +262,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                     next_registers[REGISTERS_START + 1] = r3_plus_8;
                     next_req_mem_ld = 1;
                 end
-                if(recurring_timer || !in_flight_not_full || r3_eq_r7 || input_fifos_half_full[1])
+                //if(recurring_timer || !in_flight_not_full || r3_eq_r7 || input_fifos_half_full[1])
+                if(!in_flight_not_full || r3_eq_r7)
                     next_state = STEADY_3;
             end
             STEADY_3: begin //floating point code stream
@@ -271,7 +273,8 @@ module sparse_matrix_decoder(clk, op_in, op_out, busy, req_mem_ld, req_mem_addr,
                     next_registers[REGISTERS_START + 2] = r4_plus_8;
                     next_req_mem_ld = 1;
                 end
-                if(recurring_timer || !in_flight_not_full || r4_eq_r8 || input_fifos_half_full[2])
+                //if(recurring_timer || !in_flight_not_full || r4_eq_r8 || input_fifos_half_full[2])
+                if(!in_flight_not_full || r4_eq_r8)
                     next_state = STEADY_4;
             end
             STEADY_4: begin //floating point argument stream
